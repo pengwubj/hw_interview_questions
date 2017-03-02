@@ -1,9 +1,9 @@
 [submodule "contrib/libtb"]
 	path = contrib/libtb
-	url = git@github.com:stephenry/libtb.git
+	url = https://github.com/stephenry/libtb.git
 [submodule "contrib/libv"]
 	path = contrib/libv
-	url = git@github.com:stephenry/libv.git
+	url = https://github.com/stephenry/libv.git
 [submodule "contrib/systemc"]
 	path = contrib/systemc
-	url = git@github.com:stephenry/systemc.git
+	url = https://github.com/stephenry/systemc.git
