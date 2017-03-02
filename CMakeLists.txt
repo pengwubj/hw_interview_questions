@@ -25,7 +25,7 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.4)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.2)
 PROJECT(hw_interview_questions)
 
 SET(CMAKE_CXX_STANDARD 14)

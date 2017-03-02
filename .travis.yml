@@ -1,5 +1,13 @@
 sudo: required
 
+addons:
+  apt:
+    sources:
+      - george-edison55-precise-backports
+    packages:
+      - cmake
+      - cmake-data
+
 before_install:
   - sudo apt-get install verilator
 
