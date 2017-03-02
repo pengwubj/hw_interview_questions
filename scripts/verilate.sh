@@ -25,7 +25,7 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-if [ -z ${VERILATOR_INCLUDE} ]; then
+if [ -z "${VERILATOR_INCLUDE}" ]; then
     echo "VERILATOR_INCLUDE not defined"
     exit 1
 fi
