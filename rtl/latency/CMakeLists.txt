@@ -25,5 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-ADD_SUBDIRECTORY(one_or_two)
-ADD_SUBDIRECTORY(latency)
+EMIT_ANSWER(latency)
