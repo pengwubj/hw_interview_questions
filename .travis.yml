@@ -1,10 +1,22 @@
-dist: trusty
 sudo: required
+language: c++
+
+cache:
+  apt: true
+  directories:
+    - ${TRAVIS_BUILD_DIR}/deps/llvm-3.9.0
+
+matrix:
+  include:
+    - os: linux
+      env: LLVM_VERSION=3.9.0 BOOST_VERSION=default
+      compiler: clang
 
 addons:
   apt:
-    sources:
+    sources: &sources
       - george-edison55-precise-backports
+      - ubuntu-toolchain-r-test
     packages:
       - cmake
       - cmake-data
@@ -14,12 +26,13 @@ before_install:
   - sudo apt-get install libboost-dev
   - sudo apt-get install libboost-program-options-dev
 
-language: cpp
-
 script:
-  - git submodule init
-  - git submodule update
-  - mkdir build
-  - pushd build
-  - cmake ../
-  - make
+  - |
+    git submodule init
+    git submodule update
+    mkdir build
+    pushd build
+    cmake ../
+    make
+
+# TODO: notifications
