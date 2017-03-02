@@ -27,3 +27,4 @@
 
 ADD_SUBDIRECTORY(one_or_two)
 ADD_SUBDIRECTORY(latency)
+ADD_SUBDIRECTORY(multi_counter)

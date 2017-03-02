@@ -25,37 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-MACRO(EMIT_ANSWER ANSWER)
-  SET(VERILATED_OBJ "${CMAKE_CURRENT_BINARY_DIR}/obj")
-  SET(VERILATED_LIB "${VERILATED_OBJ}/V${ANSWER}__ALL.a")
-  SET(VERILATOR_INCLUDE
-    "-I${Libv_VINCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR} -I${Libtb_VINCLUDE_DIRS}"
-    )
-  ADD_CUSTOM_TARGET(
-    verilate
-    COMMAND ${CMAKE_COMMAND} -E env
-       ANSWER=${ANSWER}
-       VERILATED_OBJ=${VERILATED_OBJ}
-       VERILATOR_INCLUDE=${VERILATOR_INCLUDE}
-       VERILATOR_EXE=${Verilator_EXE}
-       SYSTEMC_INCLUDE=${SystemC_INCLUDE_DIR}
-       SYSTEMC_LIBDIR=${SystemC_LIBRARY}
-       CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-       ${CMAKE_SOURCE_DIR}/scripts/verilate.sh
-    )
-  ADD_EXECUTABLE(${ANSWER} ${ANSWER}.cpp)
-  ADD_DEPENDENCIES(${ANSWER} verilate)
-  TARGET_INCLUDE_DIRECTORIES(${ANSWER} PUBLIC
-    ${Verilator_INCLUDE_DIR}
-    ${SystemC_INCLUDE_DIR}
-    ${Libtb_INCLUDE_DIRS}
-    ${VERILATED_OBJ}
-    )
-  TARGET_LINK_LIBRARIES(${ANSWER}
-    ${SystemC_LIBRARY}
-    ${VERILATED_LIB}
-    verilated
-    pthread
-    tb
-    )
-ENDMACRO()
+EMIT_ANSWER(multi_counter)
