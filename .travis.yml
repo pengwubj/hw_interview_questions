@@ -10,7 +10,7 @@ addons:
 
 before_install:
   - sudo apt-get install verilator
-  - sudo apt-get install libboost-dev
+  - sudo apt-get install libboost-program-options1.46.1-dev
 
 language: cpp
 
