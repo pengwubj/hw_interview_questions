@@ -97,8 +97,6 @@ private:
                 ss << "Computed delay is incorrect"
                    << " Expected=" << in_flight_pipe_.get_delay()
                    << " Actual=" << actual_delay;
-                ss << " aggregate_cnt_r_=" << aggregate_cnt_r_
-                   << " issue_cnt_r_=" << issue_cnt_r_;
                 LIBTB_REPORT_ERROR(ss.str());
             }
             if (!fail) {
