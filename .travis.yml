@@ -9,6 +9,6 @@ script:
   - git submodule init
   - git submodule update
   - mkdir build
-  - push build
+  - pushd build
   - cmake ../
   - make
