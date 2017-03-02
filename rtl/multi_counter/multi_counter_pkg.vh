@@ -57,7 +57,7 @@ package multi_counter_pkg;
                              // Query CMD
                              OP_QRY  = 5'b1_10_00
 
-                             } op_t /* verilator public */;
+                             } op_t;
 
 endpackage // multi_counter_pkg
 
