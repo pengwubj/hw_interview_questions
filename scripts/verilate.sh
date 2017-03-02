@@ -25,11 +25,36 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-ADD_SUBDIRECTORY(systemc)
-FIND_PACKAGE(SystemC REQUIRED)
+if [[ -z ${VERILATOR_INCLUDE} ]]; then
+    echo "VERILATOR_INCLUDE not defined"
+    exit 1
+fi
+
+if [[ -z ${VERILATED_OBJ} ]]; then
+    echo "VERILATED_OBJ not defined"
+    exit 1
+fi
+
+if [[ -z ${CMAKE_CURRENT_SOURCE_DIR} ]]; then
+    echo "CMAKE_CURRENT_SOURCE_DIR not defined"
+    exit 1
+fi
+
+if [[ -z ${ANSWER} ]]; then
+    echo "ANSWER not defined"
+    exit 1
+fi
+
+# Invoke Verilator
 #
-FIND_PACKAGE(Verilator REQUIRED)
-BUILD_VERILATOR_LIBS()
+${VERILATOR_EXE} --sc ${VERILATOR_INCLUDE} \
+                 --trace --trace-structs \
+                 --Mdir ${VERILATED_OBJ} \
+                 ${VERILATOR_OPTIONS} \
+                 ${CMAKE_CURRENT_SOURCE_DIR}/${ANSWER}.sv
+
+# Build generated source
 #
-ADD_SUBDIRECTORY(libtb)
-ADD_SUBDIRECTORY(libv)
+make -C ${VERILATED_OBJ} -f "V${ANSWER}.mk"
+
+exit 0

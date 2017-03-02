@@ -33,10 +33,15 @@ MACRO(EMIT_ANSWER ANSWER)
     )
   ADD_CUSTOM_TARGET(
     verilate
-    COMMAND verilator --sc ${VERILATOR_INCLUDE} --trace --trace-structs
-        --Mdir ${VERILATED_OBJ} ${CMAKE_CURRENT_SOURCE_DIR}/${ANSWER}.sv
-    COMMAND make -C ${VERILATED_OBJ} -f "V${ANSWER}.mk"
-    COMMENT "Verilating top-level: ${ANSWER}"
+    COMMAND ${CMAKE_COMMAND} -E env
+       ANSWER=${ANSWER}
+       VERILATED_OBJ=${VERILATED_OBJ}
+       VERILATOR_INCLUDE=${VERILATOR_INCLUDE}
+       VERILATOR_EXE=${Verilator_EXE}
+       SYSTEMC_INCLUDE=${SystemC_INCLUDE_DIR}
+       SYSTEMC_LIBDIR=${SystemC_LIBRARY}
+       CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+       ${CMAKE_SOURCE_DIR}/scripts/verilate.sh
     )
   ADD_EXECUTABLE(${ANSWER} ${ANSWER}.cpp)
   ADD_DEPENDENCIES(${ANSWER} verilate)
