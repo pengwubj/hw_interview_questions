@@ -33,8 +33,7 @@ MACRO(EMIT_ANSWER ANSWER)
     )
   ADD_CUSTOM_TARGET(
     verilate
-    COMMAND verilator --sc ${VERILATOR_INCLUDE}
-        --trace --trace-structs --trace-params
+    COMMAND verilator --sc ${VERILATOR_INCLUDE} --trace --trace-structs
         --Mdir ${VERILATED_OBJ} ${CMAKE_CURRENT_SOURCE_DIR}/${ANSWER}.sv
     COMMAND make -C ${VERILATED_OBJ} -f "V${ANSWER}.mk"
     COMMENT "Verilating top-level: ${ANSWER}"
