@@ -30,6 +30,12 @@ PROJECT(hw_interview_questions)
 
 SET(CMAKE_CXX_STANDARD 14)
 
+# Each 'answer' replicates the same set of CMAKE targets. Although the targets
+# are in different directories, and therefore do not conflict, CMAKE
+# specifically disallows such a construction to remain compatible with GUI IDE.
+#
+set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS 1)
+
 SET(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
   ${CMAKE_SOURCE_DIR}/cmake
