@@ -28,7 +28,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.2)
 PROJECT(hw_interview_questions)
 
-SET(CMAKE_CXX_STANDARD 14)
+SET(CMAKE_CXX_STANDARD 11)
 
 # Each 'answer' replicates the same set of CMAKE targets. Although the targets
 # are in different directories, and therefore do not conflict, CMAKE
