@@ -25,22 +25,22 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-if [[ -z ${VERILATOR_INCLUDE} ]]; then
+if [ -z ${VERILATOR_INCLUDE} ]; then
     echo "VERILATOR_INCLUDE not defined"
     exit 1
 fi
 
-if [[ -z ${VERILATED_OBJ} ]]; then
+if [ -z ${VERILATED_OBJ} ]; then
     echo "VERILATED_OBJ not defined"
     exit 1
 fi
 
-if [[ -z ${CMAKE_CURRENT_SOURCE_DIR} ]]; then
+if [ -z ${CMAKE_CURRENT_SOURCE_DIR} ]; then
     echo "CMAKE_CURRENT_SOURCE_DIR not defined"
     exit 1
 fi
 
-if [[ -z ${ANSWER} ]]; then
+if [ -z ${ANSWER} ]; then
     echo "ANSWER not defined"
     exit 1
 fi
