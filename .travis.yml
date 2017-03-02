@@ -1,3 +1,4 @@
+dist: trusty
 sudo: required
 
 addons:
@@ -10,7 +11,8 @@ addons:
 
 before_install:
   - sudo apt-get install verilator
-  - sudo apt-get install libboost-all-dev
+  - sudo apt-get install libboost-dev
+  - sudo apt-get install libboost-program-options-dev
 
 language: cpp
 
