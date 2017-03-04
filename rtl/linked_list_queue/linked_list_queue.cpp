@@ -36,9 +36,10 @@
     __func(cmd_accept, bool)                    \
     __func(resp_pass_r, bool)                   \
     __func(resp_data_w, WordT)                  \
-    __func(resp_empty_r, bool)                  \
+    __func(resp_empty_fault_r, bool)            \
     __func(full_r, bool)                        \
     __func(empty_r, QueueT)                     \
+    __func(busy_r, bool)
 
 struct LinkedListQueueTb : libtb::TopLevel
 {
@@ -62,6 +63,8 @@ struct LinkedListQueueTb : libtb::TopLevel
 
     bool run_test() {
         LIBTB_REPORT_INFO("Stimulus starts...");
+
+        wait_not_busy();
 
         b_issue_command(0, true, 0x1);
         b_issue_command(0, true, 0x2);
@@ -99,6 +102,11 @@ struct LinkedListQueueTb : libtb::TopLevel
         do { t_wait_sync(); } while (!cmd_accept_);
         t_wait_posedge_clk();
         b_issue_idle();
+    }
+
+    void wait_not_busy() {
+        do { t_wait_sync(); } while (busy_r_);
+        t_wait_posedge_clk();
     }
 
 #define __declare_signals(__name, __type)       \

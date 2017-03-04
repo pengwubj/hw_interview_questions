@@ -63,7 +63,7 @@ parameter int M = 128
    //======================================================================== //
 
    , output logic                                 resp_pass_r
-   , output logic                                 resp_empty_r
+   , output logic                                 resp_empty_fault_r
    , output logic [W-1:0]                         resp_data_w
 
    //======================================================================== //
@@ -74,13 +74,14 @@ parameter int M = 128
 
    , output logic                                 full_r
    , output logic [N-1:0]                         empty_r
+   , output logic                                 busy_r
 );
 
   localparam int RAM_LATENCY = 1;
 
   typedef struct packed {
     logic        pass;
-    logic        empty;
+    logic        empty_fault;
   } ucode_t;
   localparam int UCODE_W = $bits(ucode_t);
 
@@ -96,7 +97,7 @@ parameter int M = 128
   logic                            lkup_rnw_r;
   logic [W-1:0]                    lkup_data_r;
   logic [$clog2(M)-1:0]            lkup_addr_r;
-  logic                            lkup_empty_r;
+  logic                            lkup_empty_fault_r;
   //
   logic                            data_table_csn;
   logic                            data_table_wen;
@@ -119,20 +120,20 @@ parameter int M = 128
     begin : data_table_PROC
 
       //
-      data_table_csn    = (~lkup_pass_r);
-      data_table_wen    = lkup_rnw_r;
-      data_table_oen    = (~lkup_rnw_r);
-      data_table_a      = lkup_addr_r;
-      data_table_di     = lkup_data_r;
+      data_table_csn          = (~lkup_pass_r);
+      data_table_wen          = lkup_rnw_r;
+      data_table_oen          = (~lkup_rnw_r);
+      data_table_a            = lkup_addr_r;
+      data_table_di           = lkup_data_r;
 
       //
-      ucode_in_w        = '0;
-      ucode_in_w.pass   = lkup_pass_r;
-      ucode_in_w.empty  = lkup_empty_r;
+      ucode_in_w              = '0;
+      ucode_in_w.pass         = lkup_pass_r;
+      ucode_in_w.empty_fault  = lkup_empty_fault_r;
 
       //
-      resp_pass_r       = ucode_out_r.pass;
-      resp_empty_r      = ucode_out_r.empty;
+      resp_pass_r             = ucode_out_r.pass;
+      resp_empty_fault_r      = ucode_out_r.empty_fault;
 
     end // block: data_table_PROC
 
@@ -170,10 +171,11 @@ parameter int M = 128
     , .lkup_rnw_r             (lkup_rnw_r         )
     , .lkup_data_r            (lkup_data_r        )
     , .lkup_addr_r            (lkup_addr_r        )
-    , .lkup_empty_r           (lkup_empty_r       )
+    , .lkup_empty_fault_r     (lkup_empty_fault_r )
     //
     , .full_r                 (full_r             )
     , .empty_r                (empty_r            )
+    , .busy_r                 (busy_r             )
   );
 
   // ------------------------------------------------------------------------ //
