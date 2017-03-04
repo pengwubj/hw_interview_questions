@@ -200,6 +200,7 @@ private:
     sc_core::sc_signal<__type> __name##_;
     PORTS(__declare_signals)
 #undef __declare_signals
+ public:
     Vmulti_counter uut_;
 };
 
