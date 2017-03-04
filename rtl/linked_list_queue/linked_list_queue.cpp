@@ -64,9 +64,19 @@ struct LinkedListQueueTb : libtb::TopLevel
         LIBTB_REPORT_INFO("Stimulus starts...");
 
         b_issue_command(0, true, 0x1);
-        t_wait_posedge_clk(100);
+        b_issue_command(0, true, 0x2);
+        b_issue_command(0, true, 0x3);
+        b_issue_command(1, true, 0x11);
+        b_issue_command(1, true, 0x12);
+        b_issue_command(1, true, 0x13);
+        t_wait_posedge_clk(10);
         b_issue_command(0, false);
-        t_wait_posedge_clk(100);
+        b_issue_command(1, false);
+        b_issue_command(0, false);
+        b_issue_command(1, false);
+        b_issue_command(0, false);
+        b_issue_command(1, false);
+        t_wait_posedge_clk(10);
 
         LIBTB_REPORT_INFO("Stimulus ends.");
         return false;

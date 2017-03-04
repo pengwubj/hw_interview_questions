@@ -116,11 +116,6 @@ parameter int M = 128
   } state_t;
   localparam int STATE_W = $bits(state_t);
 
-  typedef struct packed {
-    state_t      state;
-    addr_t       link;
-  } ucode_fwd_t;
-
   //
   typedef struct packed {
     // Constants:
@@ -130,7 +125,6 @@ parameter int M = 128
     // Forwarded:
     state_t      state;
     // Temporaries:
-    addr_t       addr;
     addr_t       link;
   } ucode_t;
   localparam int UCODE_W = $bits(ucode_t);
@@ -145,6 +139,8 @@ parameter int M = 128
   `DPSRAM_SIGNALS(state_table_, STATE_W, $clog2(N));
   `SPSRAM_SIGNALS(queue_table_, ADDR_W, $clog2(M));
 
+  //
+  logic                       state_table_collision;
   //
   ucode_t                     ucode_s0_w;
   ucode_t                     ucode_s0_r;
@@ -166,6 +162,12 @@ parameter int M = 128
   ucode_t                     ucode_s4_r;
   logic                       ucode_s4_en;
   //
+  logic                       state_s5_en;
+  state_t                     state_s5_w;
+  state_t                     state_s5_r;
+  ctxt_t                      ctxt_s5_w;
+  ctxt_t                      ctxt_s5_r;
+  //
   logic                       valid_s0_w;
   logic                       valid_s0_r;
   //
@@ -181,6 +183,9 @@ parameter int M = 128
   logic                       valid_s4_w;
   logic                       valid_s4_r;
   //
+  logic                       valid_s5_w;
+  logic                       valid_s5_r;
+  //
   logic                       s0_hazard;
   logic                       stall_s0;
   logic                       adv_s0;
@@ -188,15 +193,8 @@ parameter int M = 128
   logic                       full_w;
   n_t                         empty_w;
   //
-  state_t                     state_s2;
-  state_t                     state_s3;
-  //
-  logic                       state_table_collision_w;
-  logic                       state_table_collision_r;
-  //
-  logic                       state_table_collision_dat_en;
-  state_t                     state_table_collision_dat_w;
-  state_t                     state_table_collision_dat_r;
+  state_t                     state_s1_fwd;
+  state_t                     state_s2_fwd;
   //
   logic                       fp_alloc;
   addr_t                      fp_alloc_id;
@@ -204,6 +202,20 @@ parameter int M = 128
   addr_t                      fp_clear_id;
   m_t                         fp_state_r;
   logic                       fp_all_alloc_w;
+  //
+  logic                       cmd_adv;
+  //
+  state_t                     state_s3_next;
+  state_t                     state_s4_next;
+  //
+  logic                       lkup_pass_w;
+  logic                       lkup_rnw_w;
+  w_t                         lkup_data_w;
+  addr_t                      lkup_addr_w;
+  logic                       lkup_empty_w;
+  logic                       lkup_en;
+  //
+  addr_t                      addr_s2;
 
   // ======================================================================== //
   //                                                                          //
@@ -216,13 +228,44 @@ parameter int M = 128
   always_comb
     begin : fp_PROC
 
+      //
       fp_alloc     = (cmd_pass & cmd_accept & cmd_push);
       fp_alloc_id  = EncodeM(FFSM(~fp_state_r));
 
+      //
       fp_clear     = valid_s4_r;
       fp_clear_id  = ucode_s4_r.link;
 
     end // block: fp_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb
+    begin : exe_PROC
+
+      //
+      state_s3_next  = state_s2_fwd;
+      state_s4_next  = ucode_s4_r.state;
+
+      //
+      case ({ucode_s2_r.push, state_s3_next.empty})
+        2'b1_0:
+          state_s3_next.head  = ucode_s2_r.link;
+        2'b1_1: begin
+          state_s3_next.head  = ucode_s2_r.link;
+          state_s3_next.tail  = ucode_s2_r.link;
+        end
+        default:
+          state_s3_next.tail  = state_s3_next.tail;
+      endcase // case ({ucode_s2_r.push, state_s3_next.empty})
+
+      //
+      case (ucode_s3_r.push)
+        1'b0: state_s4_next.tail  = queue_table_dout;
+        1'b1: state_s4_next.tail  = ucode_s4_r.state.tail;
+      endcase // case (ucode_s3_r.push)
+
+    end // block: exe_PROC
 
   // ------------------------------------------------------------------------ //
   //
@@ -237,8 +280,11 @@ parameter int M = 128
                           & (~ucode_s1_r.push)
                           & (ucode_s0_r.ctxt == ucode_s1_r.ctxt)
                         ;
-      stall_s0          = valid_s0_r & s0_hazard;
+      stall_s0          = valid_s0_r & (s0_hazard);
       adv_s0            = valid_s0_r & (~stall_s0);
+
+      cmd_accept        = (~stall_s0);
+      cmd_adv           = (cmd_pass & cmd_accept);
 
       //
       ucode_s0_w        = '0;
@@ -250,27 +296,35 @@ parameter int M = 128
       ucode_s1_w        = ucode_s0_r;
       //
       ucode_s2_w        = ucode_s1_r;
-      ucode_s2_w.state  = state_s2;
-      ucode_s2_w.addr   = ucode_s1_r.push ? state_s2.head : state_s2.tail;
-      ucode_s2_w.link   = ucode_s1_r.push ? ucode_s1_r.link : state_s2.tail;
+      ucode_s2_w.state  = state_s1_fwd;
       //
       ucode_s3_w        = ucode_s2_r;
-      ucode_s3_w.state  = state_s3;
+      ucode_s3_w.state  = state_s3_next;
       //
       ucode_s4_w        = ucode_s3_r;
-      if (ucode_s3_r.push) begin
-        ucode_s4_w.state.head  = ucode_s3_r.link;
-      end else begin
-        ucode_s4_w.link        = ucode_s4_r.state.tail;
-        ucode_s4_w.state.tail  = queue_table_dout;
-      end
+      ucode_s4_w.state  = state_s4_next;
+      case (ucode_s4_r.push)
+        1'b0:    ucode_s4_w.link = ucode_s4_r.state.tail;
+        default: ucode_s4_w.link = ucode_s3_r.link;
+      endcase
+      //
+      state_s5_w        = ucode_s4_r.state;
 
       //
-      valid_s0_w        = cmd_pass & (~stall_s0);
+      valid_s0_w        = (cmd_adv | stall_s0);
       valid_s1_w        = valid_s0_r & (~stall_s0);
       valid_s2_w        = valid_s1_r;
       valid_s3_w        = valid_s2_r;
       valid_s4_w        = valid_s3_r;
+      valid_s5_w        = valid_s4_r;
+
+      //
+      ucode_s0_en       = cmd_adv;
+      ucode_s1_en       = valid_s0_r & (~stall_s0);
+      ucode_s2_en       = valid_s1_r;
+      ucode_s3_en       = valid_s2_r;
+      ucode_s4_en       = valid_s3_r;
+      state_s5_en       = valid_s4_r;
 
     end // block: pipe_PROC
 
@@ -278,10 +332,23 @@ parameter int M = 128
   // ------------------------------------------------------------------------ //
   //
   always_comb
+    begin : addr_s2_PROC
+
+      //
+      case (ucode_s2_r.push)
+        1'b1:    addr_s2  = state_s2_fwd.head;
+        default: addr_s2  = state_s2_fwd.tail;
+      endcase
+
+    end // block: addr_s2_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb
     begin : state_table_PROC
 
       //
-      state_table_csn1  = ~(adv_s0 & (~state_table_collision_w));
+      state_table_csn1  = ~(adv_s0 & (~state_table_collision));
       state_table_wen1  = '1;
       state_table_oen1  = (~adv_s0);
       state_table_di1   = '0;
@@ -291,7 +358,7 @@ parameter int M = 128
       state_table_csn2  = (~valid_s4_r);
       state_table_wen2  = '0;
       state_table_oen2  = (~valid_s4_r);
-      state_table_di2   = '0;
+      state_table_di2   = ucode_s4_r.state;
       state_table_a2    = ucode_s4_r.ctxt;
 
     end // block: state_table_PROC
@@ -301,56 +368,60 @@ parameter int M = 128
   always_comb
     begin : queue_table_PROC
 
-      queue_table_csn  = ~(valid_s3_r);
-      queue_table_wen  = ~(ucode_s3_r.push);
-      queue_table_oen  = ~(valid_s3_r & (~ucode_s3_r.push));
-      queue_table_a    =   ucode_s3_r.link;
-      queue_table_di   =   ucode_s3_r.link;
+      queue_table_csn  = ~(valid_s2_r);
+      queue_table_wen  = ~(ucode_s2_r.push);
+      queue_table_oen  = ~(valid_s2_r & (~ucode_s2_r.push));
+      queue_table_a    =   addr_s2;
+      queue_table_di   =   ucode_s2_r.link;
 
     end // block: queue_table_PROC
 
   // ------------------------------------------------------------------------ //
   //
   always_comb
-    begin : state_table_collision_PROC
-
-      state_table_collision_w       =   valid_s4_r
-                                      & (~rst)
-                                      & (ucode_s4_r.ctxt == ucode_s1_r.ctxt)
-                                    ;
-
-      //
-      state_table_collision_dat_en  = valid_s4_r & state_table_collision_w;
-      state_table_collision_dat_w   = state_table_di2;
-
-    end // block: state_table_collision_PROC
+    state_table_collision = valid_s4_r & (ucode_s4_r.ctxt == ucode_s1_r.ctxt);
 
   // ------------------------------------------------------------------------ //
   //
   always_comb
     begin : forwarding_PROC
 
+      //
+      logic fwd__state_s5_to_s1;
+      logic fwd__state_s4_to_s1;
+      logic fwd__state_s3_to_s1;
+      logic fwd__state_s2_to_s1;
+      //
       logic fwd__state_s4_to_s2;
       logic fwd__state_s3_to_s2;
-      logic fwd__collision_to_s2;
       //
-      logic fwd__state_s4_to_s3;
 
-      fwd__state_s4_to_s2   = valid_s4_r & (ucode_s4_r.ctxt == ucode_s2_r.ctxt);
-      fwd__state_s3_to_s2   = valid_s3_r & (ucode_s4_r.ctxt == ucode_s3_r.ctxt);
-      fwd__collision_to_s2  = state_table_collision_r;
+      //
+      fwd__state_s5_to_s1  = valid_s5_r & (ctxt_s5_r == ucode_s1_r.ctxt);
+      fwd__state_s4_to_s1  = valid_s4_r & (ucode_s4_r.ctxt == ucode_s1_r.ctxt);
+      fwd__state_s3_to_s1  = valid_s3_r & (ucode_s3_r.ctxt == ucode_s1_r.ctxt);
+      fwd__state_s2_to_s1  = valid_s2_r & (ucode_s2_r.ctxt == ucode_s1_r.ctxt);
 
+      //
       case (1'b1)
-        fwd__state_s3_to_s2:  state_s2  = ucode_s3_r.state;
-        fwd__state_s4_to_s2:  state_s2  = ucode_s4_r.state;
-        fwd__collision_to_s2: state_s2  = state_table_collision_dat_r;
-        default:              state_s2  = state_table_dout1;
-      endcase // case (1'b1)
-
-      case (1'b1)
-        fwd__state_s4_to_s3:  state_s3  = ucode_s4_w.state;
-        default:              state_s3  = ucode_s3_r.state;
+n        fwd__state_s2_to_s1: state_s1_fwd  = state_s3_next;
+        fwd__state_s3_to_s1: state_s1_fwd  = state_s4_next;
+        fwd__state_s4_to_s1: state_s1_fwd  = ucode_s4_r.state;
+        fwd__state_s5_to_s1: state_s1_fwd  = state_s5_r;
+        default:             state_s1_fwd  = state_table_dout1;
       endcase
+
+      //
+      fwd__state_s4_to_s2   = valid_s4_r & (ucode_s4_r.ctxt == ucode_s2_r.ctxt);
+      fwd__state_s3_to_s2   = valid_s3_r & (ucode_s3_r.ctxt == ucode_s2_r.ctxt);
+
+      // state.tail is invalid at this point.
+      //
+      case (1'b1)
+        fwd__state_s3_to_s2:  state_s2_fwd  = ucode_s3_r.state;
+        fwd__state_s4_to_s2:  state_s2_fwd  = ucode_s4_r.state;
+        default:              state_s2_fwd  = ucode_s2_r.state;
+      endcase // case (1'b1)
 
     end // block: forwarding_PROC
 
@@ -358,14 +429,20 @@ parameter int M = 128
   //
   always_comb
     begin : status_PROC
+      state_t s = ucode_s4_r.state;
 
       //
-      full_w        = (~rst) & fp_all_alloc_w;
+      full_w   = (~rst) & fp_all_alloc_w;
 
       //
-      casez ({rst})
-        1'b1:    empty_w  = '1;
-        default: empty_w = empty_r;
+      empty_w  = empty_r;
+
+      //
+      casez ({rst, valid_s4_r, ucode_s4_r.push})
+        3'b1_??:  empty_w                    = '1;
+        3'b0_11:  empty_w [ucode_s4_r.ctxt]  = '0;
+        3'b0_10:  empty_w [ucode_s4_r.ctxt]  = (s.tail == s.head);
+        default:  empty_w                    = empty_r;
       endcase
 
     end // block: status_PROC
@@ -375,11 +452,15 @@ parameter int M = 128
   always_comb
     begin : lkup_PROC
 
-      lkup_pass_r   = valid_s4_r;
-      lkup_rnw_r    = (~ucode_s4_r.push);
-      lkup_data_r   = ucode_s4_r.data;
-      lkup_addr_r   = ucode_s4_r.link;
-      lkup_empty_r  = '0;
+      //
+      lkup_pass_w   = (~rst) & valid_s4_r;
+      lkup_rnw_w    = (~ucode_s4_r.push);
+      lkup_data_w   = ucode_s4_r.data;
+      lkup_addr_w   = ucode_s4_r.link;
+      lkup_empty_w  = '0;
+
+      //
+      lkup_en       = lkup_pass_w;
 
     end // block: lkup_PROC
 
@@ -388,6 +469,18 @@ parameter int M = 128
   // Sequential Logic                                                         //
   //                                                                          //
   // ======================================================================== //
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk)
+    begin
+      valid_s0_r <= valid_s0_w;
+      valid_s1_r <= valid_s1_w;
+      valid_s2_r <= valid_s2_w;
+      valid_s3_r <= valid_s3_w;
+      valid_s4_r <= valid_s4_w;
+      valid_s5_r <= valid_s5_w;
+    end
 
   // ------------------------------------------------------------------------ //
   //
@@ -422,6 +515,14 @@ parameter int M = 128
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
+    if (state_s5_en) begin
+      state_s5_r <= state_s5_w;
+      ctxt_s5_r  <= ctxt_s5_w;
+    end
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk)
     full_r <= full_w;
 
   // ------------------------------------------------------------------------ //
@@ -432,13 +533,19 @@ parameter int M = 128
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
-    state_table_collision_r <= state_table_collision_w;
+    lkup_pass_r  <= lkup_pass_w;
 
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
-    if (state_table_collision_dat_en)
-      state_table_collision_dat_r <= state_table_collision_dat_w;
+    begin : lkup_oprands_REG
+      if (lkup_en) begin
+        lkup_rnw_r   <= lkup_rnw_w;
+        lkup_data_r  <= lkup_data_w;
+        lkup_addr_r  <= lkup_addr_w;
+        lkup_empty_r <= lkup_empty_w;
+      end
+    end // block: lkup_oprands_REG
 
   // ======================================================================== //
   //                                                                          //
