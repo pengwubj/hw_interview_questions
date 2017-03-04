@@ -28,3 +28,6 @@
 ADD_SUBDIRECTORY(one_or_two)
 ADD_SUBDIRECTORY(latency)
 ADD_SUBDIRECTORY(multi_counter)
+ADD_SUBDIRECTORY(gates_from_MUX2X1)
+ADD_SUBDIRECTORY(increment)
+ADD_SUBDIRECTORY(linked_list_queue)
