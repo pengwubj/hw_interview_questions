@@ -208,6 +208,7 @@ parameter int M = 128
   //
   state_t                     state_s1_fwd;
   state_t                     state_s2_fwd;
+  state_t                     state_s3_fwd;
   //
   logic                       fp_alloc;
   addr_t                      fp_alloc_id;
@@ -254,7 +255,7 @@ parameter int M = 128
       fp_alloc_id  = EncodeM(FFSM(~fp_state_r));
 
       //
-      fp_clear     = valid_s4_r;
+      fp_clear     = valid_s4_r & (~ucode_s4_r.push);
       fp_clear_id  = ucode_s4_r.link;
 
     end // block: fp_PROC
@@ -295,7 +296,7 @@ parameter int M = 128
       //
       case (ucode_s3_r.push)
         1'b0: state_s4_next.tail  = queue_table_dout;
-        1'b1: state_s4_next.tail  = ucode_s3_r.state.tail;
+        1'b1: state_s4_next.tail  = state_s3_fwd.tail;
       endcase // case (ucode_s3_r.push)
 
     end // block: exe_PROC
@@ -345,6 +346,7 @@ parameter int M = 128
 
       //
       state_s5_w   = ucode_s4_r.state;
+      ctxt_s5_w    = ucode_s4_r.ctxt;
 
       //
       valid_s0_w   = (cmd_adv | stall_s0);
@@ -429,7 +431,7 @@ parameter int M = 128
   // ------------------------------------------------------------------------ //
   //
   always_comb
-    state_table_collision = valid_s4_r & (ucode_s4_r.ctxt == ucode_s1_r.ctxt);
+    state_table_collision = valid_s4_r & (ucode_s4_r.ctxt == ucode_s0_r.ctxt);
 
   // ------------------------------------------------------------------------ //
   //
@@ -445,6 +447,7 @@ parameter int M = 128
       logic fwd__state_s4_to_s2;
       logic fwd__state_s3_to_s2;
       //
+      logic fwd__state_s4_to_s3;
 
       //
       fwd__state_s5_to_s1  = valid_s5_r & (ctxt_s5_r == ucode_s1_r.ctxt);
@@ -471,6 +474,13 @@ parameter int M = 128
         fwd__state_s3_to_s2:  state_s2_fwd  = ucode_s3_r.state;
         fwd__state_s4_to_s2:  state_s2_fwd  = ucode_s4_r.state;
         default:              state_s2_fwd  = ucode_s2_r.state;
+      endcase // case (1'b1)
+
+      fwd__state_s4_to_s3   = valid_s4_r & (ucode_s4_r.ctxt == ucode_s3_r.ctxt);
+
+      case (1'b1)
+        fwd__state_s4_to_s3:  state_s3_fwd  = ucode_s4_r.state;
+        default:              state_s3_fwd  = ucode_s3_r.state;
       endcase // case (1'b1)
 
     end // block: forwarding_PROC
