@@ -45,6 +45,7 @@
     __func(busy_r, bool)
 
 constexpr int OPT_N = 16;
+constexpr int OPT_M = 128;
 
 struct LinkedListQueueTb : libtb::TopLevel
 {
@@ -65,8 +66,8 @@ struct LinkedListQueueTb : libtb::TopLevel
         : uut_("uut")
     {
         SC_METHOD(m_checker);
-        sensitive << e_tb_sample();
         dont_initialize();
+        sensitive << e_tb_sample();
 
         uut_.clk(clk());
         uut_.rst(rst());
@@ -81,18 +82,33 @@ struct LinkedListQueueTb : libtb::TopLevel
 
         wait_not_busy();
 
-        for (int i = 0; i < 20; i++) {
-//            const CtxtT c = libtb::random_integer_in_range(OPT_N - 1);
-            const CtxtT c = 0;
+        int occupancy = 0;
+        for (int i = 0; i < N; i++) {
+            const CtxtT c = libtb::random_integer_in_range(OPT_N - 1);
             const WordT w = libtb::random<WordT>();
 
+            if (occupancy > 100) {
+                empty_fifo_sequence();
+                occupancy = 0;
+            }
+
             bool is_push = true;
-            if (fifo_[c].size() != 0 )
+            if (fifo_[c].size() != 0)
                 is_push = libtb::random<bool>();
+
+            if (is_push)
+                occupancy++;
+            else
+                occupancy--;
 
             b_issue_command (c, is_push, w);
         }
+        empty_fifo_sequence();
         t_wait_posedge_clk(20);
+
+        t_wait_sync();
+        if (!empty_r_)
+            LIBTB_REPORT_ERROR("Fifo does not report empty on EOS");
 
         LIBTB_REPORT_INFO("Stimulus ends.");
         return false;
@@ -114,24 +130,40 @@ struct LinkedListQueueTb : libtb::TopLevel
         cmd_data_ = w;
         do { t_wait_sync(); } while (!cmd_accept_);
 
-        // Update behavioral model
-        {
-            if (is_push) {
-                fifo_[ctxt].push_back(w);
-                Expectation e;
-                e.was_push = true;
-                expectation_.push_back(e);
-            }
-            else {
-                Expectation e;
-                e.c = ctxt;
-                e.w = fifo_[ctxt].front();
-                fifo_[ctxt].pop_front();
-                expectation_.push_back(e);
-            }
+        if (is_push) {
+            std::stringstream ss;
+            ss << "Pushing CTXT=: " << ctxt << " " << std::hex << w;
+//                LIBTB_REPORT_DEBUG(ss.str());
+
+            fifo_[ctxt].push_back(w);
+            Expectation e;
+            e.was_push = true;
+            expectation_.push_back(e);
+        }
+        else {
+            std::stringstream ss;
+            ss << "Popping CTXT=: " << ctxt;
+//                LIBTB_REPORT_DEBUG(ss.str());
+
+            Expectation e;
+            e.c = ctxt;
+            e.w = fifo_[ctxt].front();
+            e.was_push = false;
+            fifo_[ctxt].pop_front();
+            expectation_.push_back(e);
         }
         t_wait_posedge_clk();
         b_issue_idle();
+    }
+
+    void empty_fifo_sequence() {
+        for (int ctxt = 0; ctxt < OPT_N; ctxt++) {
+
+            std::size_t s = fifo_[ctxt].size();
+
+            while (s--)
+                b_issue_command(ctxt, false);
+        }
     }
 
     void m_checker() {
@@ -153,10 +185,16 @@ struct LinkedListQueueTb : libtb::TopLevel
             if (actual != expected.w) {
                 std::stringstream ss;
 
-                ss << "Mismatch"
+                ss << "Mismatch on CTXT=" << expected.c
                    << " Expected: " << std::hex << expected.w
                    << " Actual: " << std::hex << actual;
-                LIBTB_REPORT_INFO(ss.str());
+                LIBTB_REPORT_ERROR(ss.str());
+            } else {
+                std::stringstream ss;
+
+                ss << "Match on CTXT=" << expected.c
+                   << " Expected: " << std::hex << expected.w;
+//                LIBTB_REPORT_DEBUG(ss.str());
             }
         }
     }
@@ -166,7 +204,7 @@ struct LinkedListQueueTb : libtb::TopLevel
         t_wait_posedge_clk();
     }
 
-    const int N{10};
+    const int N{10000};
     std::deque<Expectation> expectation_;
     std::array<std::deque<WordT>, OPT_N> fifo_;
 #define __declare_signals(__name, __type)       \

@@ -79,6 +79,8 @@ parameter int M = 128
    , output logic                                 busy_r
 );
 
+  `include "libtb_tb_top_inc.vh"
+
   `define ENCODE_W M
   `define ENCODE_SUFFIX M
   `include "encode.vh"
@@ -128,6 +130,7 @@ parameter int M = 128
     // Temporaries:
     addr_t       link;
     logic        empty_fault;
+    logic        tail_valid;
   } ucode_t;
   localparam int UCODE_W  = $bits(ucode_t);
 
@@ -208,6 +211,7 @@ parameter int M = 128
   //
   state_t                     state_s1_fwd;
   state_t                     state_s2_fwd;
+  state_t                     state_s2_fwd_no_qt;
   state_t                     state_s3_fwd;
   //
   logic                       fp_alloc;
@@ -285,8 +289,8 @@ parameter int M = 128
         1'b1:
           state_s3_next.empty  = '0;
         default: begin
-          state_t s = ucode_s2_r.state;
-          state_s3_next.empty  = (s.tail == s.head);
+          //state_t s = ucode_s2_r.state; // TODO: should be forwarded version
+          state_s3_next.empty  = (state_s2_fwd.tail == state_s2_fwd.head);
         end
       endcase // case ({ucode_s2_r.push})
 
@@ -294,9 +298,10 @@ parameter int M = 128
       state_s4_next  = ucode_s3_r.state;
 
       //
-      case (ucode_s3_r.push)
-        1'b0: state_s4_next.tail  = queue_table_dout;
-        1'b1: state_s4_next.tail  = state_s3_fwd.tail;
+      case ({ucode_s3_r.tail_valid, ucode_s3_r.push})
+        2'b0_0:  state_s4_next.tail  = queue_table_dout;
+        2'b0_1:  state_s4_next.tail  = state_s3_fwd.tail;
+        default: state_s4_next.tail  = state_s4_next.tail;
       endcase // case (ucode_s3_r.push)
 
     end // block: exe_PROC
@@ -314,55 +319,90 @@ parameter int M = 128
                                 & (~ucode_s1_r.push)
                                 & (ucode_s0_r.ctxt == ucode_s1_r.ctxt)
                               ;
-      stall_s0                = valid_s0_r & (s0_hazard);
-      adv_s0                  = valid_s0_r & (~stall_s0);
+      stall_s0          = valid_s0_r & (s0_hazard);
+      adv_s0            = valid_s0_r & (~stall_s0);
 
-      cmd_accept              = (~stall_s0);
-      cmd_adv                 = (cmd_pass & cmd_accept);
+      cmd_accept        = (~stall_s0);
+      cmd_adv           = (cmd_pass & cmd_accept);
 
+      // Pre
       //
-      ucode_s0_w              = '0;
-      ucode_s0_w.push         = cmd_push;
-      ucode_s0_w.data         = cmd_data;
-      ucode_s0_w.ctxt         = cmd_ctxt;
-      ucode_s0_w.link         = fp_alloc_id;
+      ucode_s0_w        = '0;
+      ucode_s0_w.push   = cmd_push;
+      ucode_s0_w.data   = cmd_data;
+      ucode_s0_w.ctxt   = cmd_ctxt;
+      ucode_s0_w.link   = fp_alloc_id;
+
+      // S0
       //
-      ucode_s1_w              = ucode_s0_r;
+      ucode_s1_w        = ucode_s0_r;
+
+      // S1
       //
-      ucode_s2_w              = ucode_s1_r;
-      ucode_s2_w.state        = state_s1_fwd;
+      ucode_s2_w        = ucode_s1_r;
+      ucode_s2_w.state  = state_s1_fwd;
+
+      // S2
       //
-      ucode_s3_w              = ucode_s2_r;
-      ucode_s3_w.state        = state_s3_next;
-      ucode_s3_w.empty_fault  = (~ucode_s2_r.push) & state_s2_fwd.empty;
+      ucode_s3_w        = ucode_s2_r;
+      ucode_s3_w.state  = state_s2_fwd;
+
+      // S3
       //
-      ucode_s4_w              = ucode_s3_r;
-      ucode_s4_w.state        = state_s4_next;
-      //
+      ucode_s4_w        = ucode_s3_r;
+      ucode_s4_w.state  = state_s3_fwd;
       case (ucode_s3_r.push)
-        1'b0:    ucode_s4_w.link  = ucode_s3_r.state.tail;
-        default: ucode_s4_w.link  = ucode_s3_r.link;
-      endcase
+        1'b1: begin
+          ucode_s4_w.state.empty  = 'b0;
+
+          case (state_s3_fwd.empty)
+            1'b1: begin
+              ucode_s4_w.state.head  = ucode_s3_r.link;
+              ucode_s4_w.state.tail  = ucode_s3_r.link;
+              ucode_s4_w.link        = ucode_s3_r.link;
+            end
+            default: begin
+              ucode_s4_w.state.head  = ucode_s3_r.link;
+              ucode_s4_w.link        = ucode_s3_r.link;
+            end
+          endcase // case (ucode_s3_r.state.empty)
+        end
+
+        default: begin
+          ucode_s4_w.link  = ucode_s3_r.state.tail;
+
+          case (state_s3_fwd.empty)
+            1'b1:    ucode_s4_w.empty_fault  = 'b1;
+            default: begin
+              ucode_s4_w.state.empty  = (state_s3_fwd.head == state_s3_fwd.tail);
+              if (~ucode_s4_w.state.empty)
+                ucode_s4_w.state.tail   = queue_table_dout;
+            end
+          endcase // case (ucode_s3_r.empty)
+        end
+      endcase // case (ucode_s3_r.push)
+
+      // S4
+      //
+      state_s5_w              = ucode_s4_r.state;
+      ctxt_s5_w               = ucode_s4_r.ctxt;
+
 
       //
-      state_s5_w   = ucode_s4_r.state;
-      ctxt_s5_w    = ucode_s4_r.ctxt;
+      valid_s0_w              = (cmd_adv | stall_s0);
+      valid_s1_w              = valid_s0_r & (~stall_s0);
+      valid_s2_w              = valid_s1_r;
+      valid_s3_w              = valid_s2_r;
+      valid_s4_w              = valid_s3_r;
+      valid_s5_w              = valid_s4_r;
 
       //
-      valid_s0_w   = (cmd_adv | stall_s0);
-      valid_s1_w   = valid_s0_r & (~stall_s0);
-      valid_s2_w   = valid_s1_r;
-      valid_s3_w   = valid_s2_r;
-      valid_s4_w   = valid_s3_r;
-      valid_s5_w   = valid_s4_r;
-
-      //
-      ucode_s0_en  = cmd_adv;
-      ucode_s1_en  = valid_s0_r & (~stall_s0);
-      ucode_s2_en  = valid_s1_r;
-      ucode_s3_en  = valid_s2_r;
-      ucode_s4_en  = valid_s3_r;
-      state_s5_en  = valid_s4_r;
+      ucode_s0_en             = cmd_adv;
+      ucode_s1_en             = valid_s0_r & (~stall_s0);
+      ucode_s2_en             = valid_s1_r;
+      ucode_s3_en             = valid_s2_r;
+      ucode_s4_en             = valid_s3_r;
+      state_s5_en             = valid_s4_r;
 
     end // block: pipe_PROC
 
@@ -423,8 +463,11 @@ parameter int M = 128
       queue_table_csn  = ~(valid_s2_r & (~state_s2_fwd.empty));
       queue_table_wen  = ~(ucode_s2_r.push);
       queue_table_oen  = ~(valid_s2_r & (~ucode_s2_r.push));
-      queue_table_a    =   addr_s2;
-      queue_table_di   =   ucode_s2_r.link;
+      queue_table_di   = ucode_s2_r.link;
+      case (ucode_s2_r.push)
+        1'b1:    queue_table_a  = state_s2_fwd.head;
+        default: queue_table_a  = state_s2_fwd_no_qt.tail;
+      endcase // case (ucode_s2_r.push)
 
     end // block: queue_table_PROC
 
@@ -436,54 +479,103 @@ parameter int M = 128
   // ------------------------------------------------------------------------ //
   //
   always_comb
-    begin : forwarding_PROC
+    begin : s1_PROC
 
       //
       logic fwd__state_s5_to_s1;
       logic fwd__state_s4_to_s1;
       logic fwd__state_s3_to_s1;
       logic fwd__state_s2_to_s1;
-      //
-      logic fwd__state_s4_to_s2;
-      logic fwd__state_s3_to_s2;
-      //
-      logic fwd__state_s4_to_s3;
 
       //
-      fwd__state_s5_to_s1  = valid_s5_r & (ctxt_s5_r == ucode_s1_r.ctxt);
-      fwd__state_s4_to_s1  = valid_s4_r & (ucode_s4_r.ctxt == ucode_s1_r.ctxt);
-      fwd__state_s3_to_s1  = valid_s3_r & (ucode_s3_r.ctxt == ucode_s1_r.ctxt);
       fwd__state_s2_to_s1  = valid_s2_r & (ucode_s2_r.ctxt == ucode_s1_r.ctxt);
+      fwd__state_s3_to_s1  = valid_s3_r & (ucode_s3_r.ctxt == ucode_s1_r.ctxt);
+      fwd__state_s4_to_s1  = valid_s4_r & (ucode_s4_r.ctxt == ucode_s1_r.ctxt);
+      fwd__state_s5_to_s1  = valid_s5_r & (ctxt_s5_r == ucode_s1_r.ctxt);
 
       //
       case (1'b1)
-        fwd__state_s2_to_s1: state_s1_fwd  = state_s3_next;
-        fwd__state_s3_to_s1: state_s1_fwd  = state_s4_next;
+        fwd__state_s2_to_s1: state_s1_fwd  = ucode_s3_r.state;
+        fwd__state_s3_to_s1: state_s1_fwd  = ucode_s4_w.state;
         fwd__state_s4_to_s1: state_s1_fwd  = ucode_s4_r.state;
         fwd__state_s5_to_s1: state_s1_fwd  = state_s5_r;
         default:             state_s1_fwd  = state_table_dout1;
       endcase
 
-      //
-      fwd__state_s4_to_s2   = valid_s4_r & (ucode_s4_r.ctxt == ucode_s2_r.ctxt);
-      fwd__state_s3_to_s2   = valid_s3_r & (ucode_s3_r.ctxt == ucode_s2_r.ctxt);
+    end // block: s1_PROC
 
-      // state.tail is invalid at this point.
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb
+    begin : s2_PROC
+
+      //
+      logic fwd__state_s4_to_s2;
+      logic fwd__state_s3_to_s2;
+
+      //
+      state_t s2           = ucode_s2_r.state;
+      state_t s3           = ucode_s3_r.state;
+      state_t s4_w         = ucode_s4_w.state;
+      state_t s4           = ucode_s4_r.state;
+
+      //
+      fwd__state_s3_to_s2  = valid_s3_r & (ucode_s3_r.ctxt == ucode_s2_r.ctxt);
+      fwd__state_s4_to_s2  = valid_s4_r & (ucode_s4_r.ctxt == ucode_s2_r.ctxt);
+
+      //
+      state_s2_fwd         = '0;
+
       //
       case (1'b1)
-        fwd__state_s3_to_s2:  state_s2_fwd  = ucode_s3_r.state;
-        fwd__state_s4_to_s2:  state_s2_fwd  = ucode_s4_r.state;
-        default:              state_s2_fwd  = ucode_s2_r.state;
+        fwd__state_s3_to_s2:  state_s2_fwd.empty  = s4_w.empty;
+        fwd__state_s4_to_s2:  state_s2_fwd.empty  = s4.empty;
+        default:              state_s2_fwd.empty  = s2.empty;
       endcase // case (1'b1)
 
-      fwd__state_s4_to_s3   = valid_s4_r & (ucode_s4_r.ctxt == ucode_s3_r.ctxt);
+      //
+      case (1'b1)
+        fwd__state_s3_to_s2:  state_s2_fwd.head  = s4_w.head;
+        fwd__state_s4_to_s2:  state_s2_fwd.head  = s4.head;
+        default:              state_s2_fwd.head  = s2.head;
+      endcase // case (1'b1)
+
+      // Tail is not modifyed on PUSH
+      //
+      case (1'b1)
+        fwd__state_s3_to_s2:  state_s2_fwd.tail  = s4_w.tail;
+        fwd__state_s4_to_s2:  state_s2_fwd.tail  = s4.tail;
+        default:              state_s2_fwd.tail  = s2.tail;
+      endcase // case (1'b1)
 
       case (1'b1)
-        fwd__state_s4_to_s3:  state_s3_fwd  = ucode_s4_r.state;
-        default:              state_s3_fwd  = ucode_s3_r.state;
+        fwd__state_s3_to_s2:  state_s2_fwd_no_qt.tail  = s3.tail;
+        fwd__state_s4_to_s2:  state_s2_fwd_no_qt.tail  = s4.tail;
+        default:              state_s2_fwd_no_qt.tail  = s2.tail;
       endcase // case (1'b1)
 
-    end // block: forwarding_PROC
+    end // block: s2_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb
+    begin : s3_PROC
+
+      //
+      logic fwd__state_s4_to_s3;
+
+      //
+      state_t s4  = ucode_s4_r.state;
+
+      fwd__state_s4_to_s3 = valid_s4_r & (ucode_s4_r.ctxt == ucode_s3_r.ctxt);
+
+      //
+      case (1'b1)
+        fwd__state_s4_to_s3: state_s3_fwd  = s4;
+        default:             state_s3_fwd  = ucode_s3_r.state;
+      endcase // case (1'b1)
+
+    end
 
   // ------------------------------------------------------------------------ //
   //
