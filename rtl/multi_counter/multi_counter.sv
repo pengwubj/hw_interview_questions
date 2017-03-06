@@ -84,17 +84,17 @@ module multi_counter #(
    logic                      mem_lkup;
    logic                      mem_wrbk;
    //
-   logic                      mem_prt0_en;
-   logic                      mem_prt0_wen;
-   logic [CNTRS_ID_W-1:0]     mem_prt0_addr;
-   logic [CNTRS_W-1:0]        mem_prt0_wdata;
-   logic [CNTRS_W-1:0]        mem_prt0_rdata;
-   //
    logic                      mem_prt1_en;
    logic                      mem_prt1_wen;
    logic [CNTRS_ID_W-1:0]     mem_prt1_addr;
-   logic [CNTRS_W-1:0]        mem_prt1_wdata;
-   logic [CNTRS_W-1:0]        mem_prt1_rdata;
+   logic [CNTRS_W-1:0]        mem_prt1_din;
+   logic [CNTRS_W-1:0]        mem_prt1_dout;
+   //
+   logic                      mem_prt2_en;
+   logic                      mem_prt2_wen;
+   logic [CNTRS_ID_W-1:0]     mem_prt2_addr;
+   logic [CNTRS_W-1:0]        mem_prt2_din;
+   logic [CNTRS_W-1:0]        mem_prt2_dout;
    //
    logic                      fwd_4_to_2;
    logic                      fwd_3_to_2;
@@ -160,18 +160,18 @@ module multi_counter #(
                          ;
 
         // Prt 0
-        mem_prt0_en      =   mem_lkup
+        mem_prt1_en      =   mem_lkup
                            & (~mem_collision)
                          ;
-        mem_prt0_wen     = 1'b0;
-        mem_prt0_addr    = ucode_r [1].id;
-        mem_prt0_wdata   = '0;
+        mem_prt1_wen     = 1'b0;
+        mem_prt1_addr    = ucode_r [1].id;
+        mem_prt1_din     = '0;
 
         // Prt 1
-        mem_prt1_en      = mem_wrbk;
-        mem_prt1_wen     = 1'b1;
-        mem_prt1_addr    = ucode_r [4].id;
-        mem_prt1_wdata   = ucode_r [4].cdat;
+        mem_prt2_en      = mem_wrbk;
+        mem_prt2_wen     = 1'b1;
+        mem_prt2_addr    = ucode_r [4].id;
+        mem_prt2_din     = ucode_r [4].cdat;
 
      end
 
@@ -191,7 +191,7 @@ module multi_counter #(
         ucode_nxt [2].byp_vld = mem_collision;
         ucode_nxt [2].cdat    =   (ucode_r [1].op == multi_counter_pkg::OP_INIT)
                                 ? ucode_r [1].cdat
-                                : mem_prt1_wdata;
+                                : mem_prt2_din;
                               ;
 
         //
@@ -238,7 +238,7 @@ module multi_counter #(
           fwd_3_to_2:   ucode_byp_2 = ucode_cdat_3;
           fwd_4_to_2:   ucode_byp_2 = ucode_r [4].cdat;
           fwd_byp_to_2: ucode_byp_2 = ucode_r [2].cdat;
-          default:      ucode_byp_2 = mem_prt0_rdata;
+          default:      ucode_byp_2 = mem_prt1_dout;
         endcase
 
         //
@@ -253,7 +253,7 @@ module multi_counter #(
           default:    ucode_byp_3 = ucode_r [3].cdat;
         endcase
 
-     end
+     end // block: fwd_PROC
 
    // ----------------------------------------------------------------------- //
    //
@@ -307,25 +307,21 @@ module multi_counter #(
 
    // ----------------------------------------------------------------------- //
    //
-   dpram #(
-        .N     (CNTRS_N)
-      , .W     (CNTRS_W))
-   u_state_table_ram (
+  dpsram #(.N(CNTRS_N), .W(CNTRS_W)) u_state_table_ram (
       //
-        .clk0                  (clk)
-      , .clk1                  (clk)
-      //
-      , .en0                   (mem_prt0_en)
-      , .wen0                  (mem_prt0_wen)
-      , .addr0                 (mem_prt0_addr)
-      , .wdata0                (mem_prt0_wdata)
-      , .rdata0                (mem_prt0_rdata)
-      //
+        .clk1                  (clk)
       , .en1                   (mem_prt1_en)
       , .wen1                  (mem_prt1_wen)
       , .addr1                 (mem_prt1_addr)
-      , .wdata1                (mem_prt1_wdata)
-      , .rdata1                (mem_prt1_rdata)
+      , .din1                  (mem_prt1_din)
+      , .dout1                 (mem_prt1_dout)
+      //
+      , .clk2                  (clk)
+      , .en2                   (mem_prt2_en)
+      , .wen2                  (mem_prt2_wen)
+      , .addr2                 (mem_prt2_addr)
+      , .din2                  (mem_prt2_din)
+      , .dout2                 (mem_prt2_dout)
    );
 
    // ======================================================================= //
