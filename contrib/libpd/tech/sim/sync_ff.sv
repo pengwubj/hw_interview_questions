@@ -27,16 +27,17 @@
 
 module sync_ff #(parameter int W = 1) (/*AUTOARG*/
   // Outputs
-  w_t, q,
+  q,
   // Inputs
-  w_t, d, clk
+  d, clk, rst
   );
 
   typedef logic [W-1:0] w_t;
 
-  input                 w_t d;
-  output                w_t q;
+  input                 [W-1:0] d;
+  output                [W-1:0] q;
   input                 clk;
+  input                 rst;
 
   w_t d_1, d_2;
 
@@ -49,3 +50,8 @@ module sync_ff #(parameter int W = 1) (/*AUTOARG*/
   always_comb q = d_2;
 
 endmodule // sync_ff
+
+
+// Local Variables:
+// verilog-typedef-regexp:"_t$"
+// End:
