@@ -28,9 +28,18 @@
 `include "pd_pkg.vh"
 
 module linked_list_queue_cntrl #(
-parameter int W = 32,
-parameter int N = 16,
-parameter int M = 128
+
+   // Data Width
+   //
+     parameter int W = 32
+
+   // Number of FIFO Contexts (CTXT)
+   //
+   , parameter int CTXT = 16
+
+   // Number of LINK entries in main Linked-List Table.
+   //
+   , parameter int M = 128
 )
 (
    //======================================================================== //
@@ -52,7 +61,7 @@ parameter int M = 128
    , input                                        cmd_pass
    , input                                        cmd_push
    , input        [W-1:0]                         cmd_data
-   , input        [$clog2(N)-1:0]                 cmd_ctxt
+   , input        [$clog2(CTXT)-1:0]              cmd_ctxt
    //
    , output logic                                 cmd_accept
 
@@ -75,7 +84,7 @@ parameter int M = 128
    //======================================================================== //
 
    , output logic                                 full_r
-   , output logic [N-1:0]                         empty_r
+   , output logic [CTXT-1:0]                      empty_r
    , output logic                                 busy_r
 );
 
@@ -99,10 +108,10 @@ parameter int M = 128
   //                                                                          //
   // ======================================================================== //
 
-  typedef logic [N-1:0] n_t;
+  typedef logic [CTXT-1:0] n_t;
   typedef logic [M-1:0] m_t;
   //
-  localparam int CTXT_W = $clog2(N);
+  localparam int CTXT_W = $clog2(CTXT);
   typedef logic [CTXT_W-1:0] ctxt_t;
   //
   localparam int WORD_W = W;
@@ -152,7 +161,7 @@ parameter int M = 128
   // ======================================================================== //
 
   //
-  `DPSRAM_SIGNALS(state_table_, STATE_W, $clog2(N));
+  `DPSRAM_SIGNALS(state_table_, STATE_W, $clog2(CTXT));
   `SPSRAM_SIGNALS(queue_table_, ADDR_W, $clog2(M));
 
   //
@@ -639,7 +648,7 @@ parameter int M = 128
           fsm_init_state_en      = 'b1;
           fsm_init_state_w.ctxt  = fsm_init_state_r.ctxt + 'b1;
           //
-          if (fsm_init_state_r.ctxt == ctxt_t'(N - 1))
+          if (fsm_init_state_r.ctxt == ctxt_t'(CTXT - 1))
             fsm_init_w = INIT_DONE;
         end
 
@@ -779,7 +788,7 @@ parameter int M = 128
 
   // ------------------------------------------------------------------------ //
   //
-  dpsram #(.W(STATE_W), .N(N))u_state_table (
+  dpsram #(.W(STATE_W), .N(CTXT))u_state_table (
     // Port 1
       .clk1                   (clk                )
     , .csn1                   (state_table_csn1   )
