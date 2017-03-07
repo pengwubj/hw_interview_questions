@@ -7,3 +7,6 @@
 [submodule "contrib/systemc"]
 	path = contrib/systemc
 	url = https://github.com/stephenry/systemc.git
+[submodule "contrib/libpd"]
+	path = contrib/libpd
+	url = https://github.com/stephenry/libpd.git
