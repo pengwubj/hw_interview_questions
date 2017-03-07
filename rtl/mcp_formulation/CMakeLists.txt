@@ -25,19 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.2)
-PROJECT(libpd)
-
-# Presently hardwired to 'sim' types.
-#
-SET(LibpdTech_VINCLUDE_DIRS
-  ${CMAKE_CURRENT_SOURCE_DIR}/tech/sim
-  CACHE
-  STRING "Libtb standard-cell library"
-  )
-
-SET(Libpd_VINCLUDE_DIRS
-  ${CMAKE_CURRENT_SOURCE_DIR}/tech/
-  CACHE
-  STRING "Libtb standard-cell library"
-  )
+EMIT_ANSWER(mcp_formulation)
