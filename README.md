@@ -36,6 +36,8 @@ invoking the generated executable in the RTL directory.
 * latency
 * multi_counter
 * one_or_two
+* mcp_formulation
+* detect_sequence
 
 ## Disclaimer
 Contributions are welcome however please consider that the current project
