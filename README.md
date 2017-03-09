@@ -29,15 +29,23 @@ Upon successful completion of the build process. Tests can be executed by
 invoking the generated executable in the RTL directory.
 
 ## Answers
-* count_ones
-* fifo_async
-* gates_from_MUX2X1
-* increment
-* latency
-* multi_counter
-* one_or_two
-* mcp_formulation
-* detect_sequence
+* __count_ones__ Answer to compute the population count of an input vector.
+* __fifo_async__ Answer to demonstrate the construction of a standard
+  asynchronous FIFO.
+* __gates_from_MUX2X1__ Answer to derive AND, OR, XOR and INV logic gates from a
+  MUX2X standard cell.
+* __increment__ Answer to derive logic to compute an increment function.
+* __latency__ Answer to compute the average latency of a command stream to and
+  from some external agent.
+* __multi_counter__ Answer to demonstrate basic forwarding and pipeline
+  concepts. Multiple counters are retained in a central state table. They are
+  then randomly incremented or decremented on demand.
+* __one_or_two__ Answer to detect whether for an arbitrary input vector, 0-bits
+  are set, 1-bit is set, or greater than 1 bit is set.
+* __mcp_formulation (Multi-Cycle Path Formulation)__ Answer to pass a vector
+  between two clock domains using a multi-cycle path.
+* __detect_sequence__ Answer to detect a given sequence within an input
+  serial stream.
 
 ## Disclaimer
 Contributions are welcome however please consider that the current project
