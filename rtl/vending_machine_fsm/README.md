@@ -15,3 +15,7 @@ inserted into the machine. When enough money has been added, the vend signal
 goes high for a single cycle. If $0.45 had been inserted, change also pulses
 high for one cycle. After vending an item, the state returns to the initial
 state where no money has been inserted.
+
+# Commentary
+
+TBD

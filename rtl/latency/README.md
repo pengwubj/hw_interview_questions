@@ -1,6 +1,10 @@
-# Latency
+# Origin
 
-# Question
+# Company
+
+Apple
+
+# Problem Statement
 
 Commands are issued to some agent. Reponses return from the agent after some
 undefined latency. Derive logic that will compute the average latency

@@ -1,6 +1,12 @@
-# Multi-Counter
+# Origin
 
-# Question
+Unknown
+
+# Company
+
+Fungible/Google
+
+# Problem Statement
 
 Maintain a set of counters that can be incremented, decremented of initialized
 based upon in incoming comamnd. The counters are implemented in a single
