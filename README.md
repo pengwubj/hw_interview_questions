@@ -46,6 +46,8 @@ invoking the generated executable in the RTL directory.
   between two clock domains using a multi-cycle path.
 * __detect_sequence__ Answer to detect a given sequence within an input
   serial stream.
+* __vending_machine_fsm__ Answer to design a FSM to emulate the behavior of a
+  simple vending machine.
 
 ## Disclaimer
 Contributions are welcome however please consider that the current project

@@ -25,13 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-ADD_SUBDIRECTORY(one_or_two)
-ADD_SUBDIRECTORY(latency)
-ADD_SUBDIRECTORY(multi_counter)
-ADD_SUBDIRECTORY(gates_from_MUX2X1)
-ADD_SUBDIRECTORY(increment)
-ADD_SUBDIRECTORY(fifo_async)
-ADD_SUBDIRECTORY(count_ones)
-ADD_SUBDIRECTORY(mcp_formulation)
-ADD_SUBDIRECTORY(detect_sequence)
-ADD_SUBDIRECTORY(vending_machine_fsm)
+EMIT_ANSWER(vending_machine_fsm)
