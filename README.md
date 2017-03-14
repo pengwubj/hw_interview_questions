@@ -20,6 +20,8 @@ interviewer in a candidates solution provided.
 git clone https://github.com/stephenry/hw_interview_questions
 cd hw_interview_questions
 git submodule update --init --recursive
+mkdir build
+cd build
 cmake ../
 make
 ~~~
