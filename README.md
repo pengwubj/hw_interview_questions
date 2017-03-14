@@ -24,7 +24,8 @@ mkdir build
 cd build
 cmake ../
 make
-~~~
+~~~~
+
 
 ## Run Steps
 Upon successful completion of the build process. Tests can be executed by
