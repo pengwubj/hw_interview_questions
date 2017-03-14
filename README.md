@@ -50,6 +50,8 @@ invoking the generated executable in the RTL directory.
   serial stream.
 * __vending_machine_fsm__ Answer to design a FSM to emulate the behavior of a
   simple vending machine.
+* __vending_machine_dp__ Variant of FSM solution whereby some accumulation of a
+  running count is required before an IRN-BRU shall be emitted.
 
 ## Disclaimer
 Contributions are welcome however please consider that the current project
