@@ -49,7 +49,7 @@ Three solutions are presented:
   is capable of achieving a good Fmax.
 
 
-NOTES:
+# NOTES
 
 In modern geometries, the transition to a dedicated SRAM module is
 typically only justified when the number of bits to be retain exceeds
