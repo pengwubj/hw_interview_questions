@@ -9,7 +9,7 @@ preceding bits. What function does the logic perform?
 
 Code to compute this function is presented.
 
-It turns out, none obviously, that this function actually computes an
+It turns out, non-obviously, that this function actually computes an
 increment-by-1 function on the input vector. It remains subject to debate the
 advantage that such logic would have over the inference of a traditional
 full-adder. Additionally, the complexity of the resultant code obscures the fact
