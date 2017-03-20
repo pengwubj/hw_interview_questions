@@ -92,6 +92,7 @@ module multi_counter_variants #(
   //
   w_t                         s1_mem_w;
   w_t [N-1:0]                 s1_mem_r;
+  logic                       s1_mem_en;
   logic                       s1_pass_w;
   //
   logic                       s1_dat_en;
@@ -111,6 +112,9 @@ module multi_counter_variants #(
       endcase // unique case (cmd_op)
 
       //
+      s1_mem_en  = cmd_pass & cmd_op [OP_WRITE_B];
+              
+      //
       s1_pass_w  = cmd_pass & (cmd_op == OP_QRY);
 
       //
@@ -126,7 +130,7 @@ module multi_counter_variants #(
   always_ff @(posedge clk)
     if (rst)
       s1_mem_r <= '0;
-    else if (cmd_pass)
+    else if (s1_mem_en)
       s1_mem_r [cmd_id] <= s1_mem_w;
 
   // ------------------------------------------------------------------------ //
