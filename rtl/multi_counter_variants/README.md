@@ -7,10 +7,7 @@ Google
 # Problem
 
 Maintain a set of counters that can be incremented, decremented of initialized
-based upon in incoming comamnd. The counters are implemented in a single
-dual-ported synchronous SRAM (or register file). Implement a pipeline to compute
-updates to the counters such that commands can be consumed at the rate of 1 per
-cycle.
+based upon in incoming command.
 
 # Commentary
 
