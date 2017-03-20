@@ -43,6 +43,7 @@ invoking the generated executable in the RTL directory.
 * __multi_counter__ Answer to demonstrate basic forwarding and pipeline
   concepts. Multiple counters are retained in a central state table. They are
   then randomly incremented or decremented on demand.
+* __multi_counter_variant__ Alternate solutions to multi_counter problem.
 * __one_or_two__ Answer to detect whether for an arbitrary input vector, 0-bits
   are set, 1-bit is set, or greater than 1 bit is set.
 * __mcp_formulation (Multi-Cycle Path Formulation)__ Answer to pass a vector

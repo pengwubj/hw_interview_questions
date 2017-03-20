@@ -26,6 +26,7 @@
 //=========================================================================== //
 
 `include "multi_counter_variants_pkg.vh"
+`include "dpsram_pkg.vh"
 
 module multi_counter_variants #(
      parameter int W = 32
@@ -175,14 +176,14 @@ module multi_counter_variants #(
         case (cmd_op)
           OP_INIT,
           OP_INCR,
-          OP_DECR: s2_mem_en [i]  = cmd_pass;
+          OP_DECR: s2_mem_en [i]  = cmd_pass & (i[$clog2(N)-1:0] == cmd_id);
           default: s2_mem_en [i]  = '0;
         endcase // case (cmd_op)
 
       end // for (int i = 0; i < N; i++)
 
       //
-      s2_dat_w   = s2_mem_r [cmd_op];
+      s2_dat_w   = s2_mem_r [cmd_id];
 
       //
       s2_pass_w  = cmd_pass & (cmd_op == OP_QRY);
@@ -196,16 +197,12 @@ module multi_counter_variants #(
   //
   always_ff @(posedge clk)
     if (rst)
-      begin
-        for (int i = 0; i < N; i++)
-          s2_mem_r [i] <= '0;
-      end
+      for (int i = 0; i < N; i++)
+        s2_mem_r [i] <= '0;
     else
-      begin
-        for (int i = 0; i < N; i++)
-          if (s2_mem_en [i])
-            s2_mem_r [i] <= s2_mem_w [i];
-      end
+      for (int i = 0; i < N; i++)
+        if (s2_mem_en [i])
+          s2_mem_r [i] <= s2_mem_w [i];
 
   // ------------------------------------------------------------------------ //
   //
@@ -229,15 +226,7 @@ module multi_counter_variants #(
   // ======================================================================== //
 
   typedef logic [$clog2(N)-1:0] id_t;
-  logic                       s3_sram_prt1_en;
-  logic                       s3_sram_prt1_wen;
-  id_t                        s3_sram_prt1_a;
-  w_t                         s3_sram_prt1_din;
-  logic                       s3_sram_prt2_en;
-  logic                       s3_sram_prt2_wen;
-  id_t                        s3_sram_prt2_a;
-  w_t                         s3_sram_prt2_dout;
-  w_t                         s3_sram_r [N-1:0];
+  `DPSRAM_SIGNALS(s3_sram_, W, $clog2(N));
   typedef struct packed {
     op_t op;
     id_t id;
@@ -306,19 +295,22 @@ module multi_counter_variants #(
       p1_ucode_en     = p0_valid_r;
       p2_ucode_en     = p1_valid_r;
       p3_ucode_en     = p2_valid_r;
-
+      p4_ucode_en     = p3_valid_r;
+       
       //
       p0_ucode_w      = '0;
       p0_ucode_w.op   = cmd_op;
       p0_ucode_w.id   = cmd_id;
       p0_ucode_w.dat  = cmd_dat;
-      p1_ucode_w      = '0;
+
+      //
+      p1_ucode_w      = p0_ucode_r;
 
       // EXE (S2)
-      p3_ucode_w        = '0;
+      p3_ucode_w      = p2_ucode_r;
       case (1'b1)
-        fwd__s4_to_s2: p2_dat  = p4_ucode_r.dat;
         fwd__s3_to_s2: p2_dat  = p3_ucode_r.dat;
+        fwd__s4_to_s2: p2_dat  = p4_ucode_r.dat;
         default:       p2_dat  = p2_ucode_r.dat;
       endcase // case (1'b1)
       unique case (p2_ucode_r.op)
@@ -331,25 +323,28 @@ module multi_counter_variants #(
       // LKUP (S1)
       p2_ucode_w      = p1_ucode_r;
       case (1'b1)
-        fwd__s4_to_s1: p2_ucode_w.dat  = p4_ucode_r.dat;
-        fwd__s3_to_s1: p2_ucode_w.dat  = p3_ucode_r.dat;
         fwd__s2_to_s1: p2_ucode_w.dat  = p3_ucode_w.dat;
-        default:       p2_ucode_w.dat  = s3_sram_prt2_dout;
-      endcase
+        fwd__s3_to_s1: p2_ucode_w.dat  = p3_ucode_r.dat;
+        fwd__s4_to_s1: p2_ucode_w.dat  = p4_ucode_r.dat;
+        default:       p2_ucode_w.dat  =
+           (p1_ucode_r.op == OP_INIT) ? p1_ucode_r.dat : s3_sram_dout1;
+      endcase // case (1'b1)
 
+      p4_ucode_w        = p3_ucode_r;
 
       // WRBK (S3)
-      s3_sram_prt1_en   = p3_valid_r & p3_ucode_r.op [OP_WRITE_B];
-      s3_sram_prt1_wen  = '1;
-      s3_sram_prt1_a    = p3_ucode_r.op;
-      s3_sram_prt1_din  = p3_ucode_r.dat;
+      s3_sram_en2       = p3_valid_r & p3_ucode_r.op [OP_WRITE_B];
+      s3_sram_wen2      = '1;
+      s3_sram_addr2     = p3_ucode_r.id;
+      s3_sram_din2      = p3_ucode_r.dat;
 
-      s0_collision      = s3_sram_prt1_en & (p0_ucode_r.op == p3_ucode_r.op);
+      s0_collision      = s3_sram_en2 & (p0_ucode_r.id == p3_ucode_r.id);
 
       // LKUP (S1)
-      s3_sram_prt2_en   = p1_valid_r & (~s0_collision);
-      s3_sram_prt2_wen  = '0;
-      s3_sram_prt2_a    = p0_ucode_r.op;
+      s3_sram_en1       = p0_valid_r & (~s0_collision);
+      s3_sram_wen1      = '0;
+      s3_sram_addr1     = p0_ucode_r.id;
+      s3_sram_din1      = '0;
 
       //
       s3_pass_w         = p3_valid_r & p3_ucode_r.op [OP_OUTPUT_B];
@@ -360,15 +355,22 @@ module multi_counter_variants #(
 
   // ------------------------------------------------------------------------ //
   //
-  always_ff @(posedge clk)
-    if (s3_sram_prt1_en & s3_sram_prt1_wen)
-      s3_sram_r [s3_sram_prt1_a] <= s3_sram_prt1_din;
-
-  // ------------------------------------------------------------------------ //
-  //
-  always_ff @(posedge clk)
-    if (s3_sram_prt2_en & (~s3_sram_prt2_wen))
-      s3_sram_prt2_dout <= s3_sram_r [s3_sram_prt2_a];
+  dpsram #(.W(W), .N(N)) u_s3_sram (
+     //
+       .clk1               (clk                     )
+     , .en1                (s3_sram_en1             )
+     , .wen1               (s3_sram_wen1            )
+     , .addr1              (s3_sram_addr1           )
+     , .din1               (s3_sram_din1            )
+     , .dout1              (s3_sram_dout1           )
+     //
+     , .clk2               (clk                     )
+     , .en2                (s3_sram_en2             )
+     , .wen2               (s3_sram_wen2            )
+     , .addr2              (s3_sram_addr2           )
+     , .din2               (s3_sram_din2            )
+     , .dout2              (s3_sram_dout2           )
+  );
 
   // ------------------------------------------------------------------------ //
   //

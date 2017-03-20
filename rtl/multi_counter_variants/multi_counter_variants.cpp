@@ -84,25 +84,43 @@ public:
 
     void m_trace()
     {
+        auto do_check = [&](const DatT & actual, std::deque<DatT> & expect) {
+          if (expect.size() == 0)
+            LIBTB_REPORT_FATAL("Unexpected completion.");
+          const DatT expected = expect.front();
+          expect.pop_front();
+          if (actual != expected) {
+            std::stringstream ss;
+            ss << "Mismatch "
+               << " Expected: " << std::dec << expected
+               << " Actual: " << std::dec << actual
+              ;
+            LIBTB_REPORT_ERROR(ss.str());
+          }
+        };
+      
         if (s1_pass_r_)
         {
             std::stringstream ss;
             ss << "S1 Query returns: " << s1_dat_r_;
-            LIBTB_REPORT_INFO(ss.str());
+            LIBTB_REPORT_DEBUG(ss.str());
+            do_check(s1_dat_r_, expect_[1]);
         }
 
         if (s2_pass_r_)
         {
             std::stringstream ss;
             ss << "S2 Query returns: " << s2_dat_r_;
-            LIBTB_REPORT_INFO(ss.str());
+            LIBTB_REPORT_DEBUG(ss.str());
+            do_check(s2_dat_r_, expect_[2]);
         }
 
         if (s3_pass_r_)
         {
             std::stringstream ss;
             ss << "S3 Query returns: " << s3_dat_r_;
-            LIBTB_REPORT_INFO(ss.str());
+            LIBTB_REPORT_DEBUG(ss.str());
+            do_check(s3_dat_r_, expect_[3]);
         }
     }
 
@@ -144,18 +162,32 @@ public:
         t_wait_posedge_clk(10);
         LIBTB_REPORT_INFO("Stimulus starts...");
 
-        b_cmd_issue(0, OP_INIT, 10);
-        b_cmd_issue(0, OP_INC);
-        b_cmd_issue(0, OP_INC);
-        b_cmd_issue(0, OP_INC);
-        b_cmd_issue(0, OP_INC);
-        b_cmd_issue(0, OP_QRY);
-        t_wait_posedge_clk(10);
+        // Initialization
+        for (int i = 0; i < OPT_CNTRS_N; i++)
+          b_cmd_issue(i, OP_INIT, N_);
 
+        if (apply_stimulus_) {
+          // Stimulus
+          int n = N_;
+          while (n--)
+            b_cmd_issue(libtb::random_integer_in_range(OPT_CNTRS_N - 1),
+                        *libtb::choose_random(cmds));
+        }
+
+        // Checker
+        for (int i = 0; i < OPT_CNTRS_N; i++)
+          b_cmd_issue(i, OP_QRY);
+
+        // Latency delay
+        t_wait_posedge_clk(10);
+        
         LIBTB_REPORT_INFO("Stimulus ends.");
         return true;
     }
 
+    const bool apply_stimulus_{true};
+    const int N_{100000};
+    std::vector<OpT> cmds{OP_INC, OP_DEC};
     std::array<DatT, OPT_CNTRS_N> cntrs_;
     std::array<std::deque<DatT>, OPT_CNTRS_N> expect_;
 
