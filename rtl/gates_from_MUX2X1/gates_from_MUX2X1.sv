@@ -39,7 +39,7 @@ module gates_from_MUX2X1 ( input a, input b, output logic fail );
   logic       y_or_actual;
   logic       y_xor_actual;
 
-`define MUX2X1(__a, __b, __sel) ((~__sel) & __a | (__sel & __b))
+`define MUX2X1(__a, __b, __sel) ((~(__sel) & (__a)) | ((__sel) & (__b)))
 
   always_comb
     begin : gates_PROC
