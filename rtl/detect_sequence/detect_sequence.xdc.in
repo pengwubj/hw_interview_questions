@@ -25,5 +25,11 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(one_or_two)
-LIBPD_VIVADO(one_or_two)
+create_clock -period 10.0 -name CLK [get_ports clk]
+
+# HACK: resolve hold violation on in -> shift_w [0].D (i.e. a shift register
+# using an input port). This exists because PIN mappings are - purposefully -
+# left undefined for simplicity.
+#
+set_input_delay -clock CLK 5.0 [all_inputs]
+set_output_delay -clock CLK 1.0 [all_outputs]

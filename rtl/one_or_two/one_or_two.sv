@@ -82,6 +82,7 @@ module one_or_two #(parameter int W = 32) (
       //
       has_set_0            = (~|x_cond);
 
+      // Critical path is through is_power_of_2
       //
       is_power_of_2        = ~|(x_cond & (x_cond - 1));
 

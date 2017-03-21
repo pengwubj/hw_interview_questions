@@ -44,7 +44,7 @@ module detect_sequence (
 
    , input                                   in
    //
-   , output logic                            fail
+   , output logic                            fail_r
 );
 
   localparam int W = 8;
@@ -72,6 +72,8 @@ module detect_sequence (
   //
   logic             detect_fsm;
   logic             detect_shift;
+  //
+  logic             fail_w;
 
   // 10001010
 
@@ -99,7 +101,7 @@ module detect_sequence (
         `TRANSITION(6, 3, 7); // 1
         `TRANSITION(7, 8, 1); // 0
         `TRANSITION(8, 0, 1);
-        default: fsm_w   = 'x;
+        default: fsm_w = fsm_r;
       endcase // case (fsm_r)
 `undef TRANSITION
 
@@ -125,7 +127,7 @@ module detect_sequence (
 
   // ------------------------------------------------------------------------ //
   //
-  always_comb fail = (detect_fsm ^ detect_shift);
+  always_comb fail_w = (detect_fsm ^ detect_shift);
 
   // ======================================================================== //
   //                                                                          //
@@ -136,7 +138,15 @@ module detect_sequence (
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
-    fsm_r <= rst ? '0 : fsm_w;
+    if (rst)
+      fail_r <= '0;
+    else
+      fail_r <= fail_w;
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk)
+    fsm_r <= rst ? STATE_S0 : fsm_w;
 
   // ------------------------------------------------------------------------ //
   //

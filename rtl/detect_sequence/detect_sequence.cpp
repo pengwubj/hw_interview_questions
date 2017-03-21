@@ -30,7 +30,7 @@
 
 #define PORTS(__func)                           \
     __func(in, bool)                            \
-    __func(fail, bool)
+    __func(fail_r, bool)
 
 class DetectSequenceTb : libtb::TopLevel
 {
@@ -69,7 +69,7 @@ public:
     }
 
     void m_checker() {
-        LIBTB_ASSERT_ERROR(!fail_);
+        LIBTB_ASSERT_ERROR(!fail_r_);
     }
 
     const int N{10000};
