@@ -25,5 +25,7 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(vending_machine_fsm)
-LIBPD_VIVADO(vending_machine_fsm)
+create_clock -period 10.0 -name CLK [get_ports clk]
+
+set_input_delay -clock CLK 1.0 [all_inputs]
+set_output_delay -clock CLK 1.0 [all_outputs]
