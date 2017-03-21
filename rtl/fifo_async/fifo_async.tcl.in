@@ -1,5 +1,5 @@
-##========================================================================== ##
-## Copyright (c) 2017, Stephen Henry
+##========================================================================== //
+## Copyright (c) 2016, Stephen Henry
 ## All rights reserved.
 ##
 ## Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,25 @@
 ## CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ## ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ## POSSIBILITY OF SUCH DAMAGE.
-##========================================================================== ##
+##========================================================================== //
 
-EMIT_ANSWER(fifo_async_tb)
-LIBPD_VIVADO(fifo_async)
+set prj fifo_async
+create_project latency -in_memory
+
+# Source
+read_verilog @CMAKE_CURRENT_SOURCE_DIR@/$prj.sv
+read_verilog @LIBV_ROOT@/mem_egress_pipe.sv
+read_verilog @LIBPD_TECH_ROOT@/dpsram.sv
+read_verilog @LIBPD_TECH_ROOT@/sync_ff.sv
+
+# XDC
+read_xdc @CMAKE_CURRENT_BINARY_DIR@/$prj.xdc
+
+# PD FLOW
+synth_design -name $prj -top $prj -include_dirs {@LIBPD_INCLUDE_DIRS@}
+opt_design
+place_design
+phys_opt_design
+route_design
+report_timing_summary
+report_cdc

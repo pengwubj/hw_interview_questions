@@ -145,7 +145,7 @@ module vending_machine_dp (
             default: fsm_w  = fsm_r;
           endcase // casez ({count_is_zero, change_done})
 
-        default: fsm_w  = 'x;
+        default: fsm_w  = fsm_r;
 
       endcase // case (fsm_r)
 

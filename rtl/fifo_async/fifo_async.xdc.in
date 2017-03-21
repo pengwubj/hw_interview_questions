@@ -1,5 +1,5 @@
-##========================================================================== ##
-## Copyright (c) 2017, Stephen Henry
+##========================================================================== //
+## Copyright (c) 2016, Stephen Henry
 ## All rights reserved.
 ##
 ## Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,21 @@
 ## CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ## ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ## POSSIBILITY OF SUCH DAMAGE.
-##========================================================================== ##
+##========================================================================== //
 
-EMIT_ANSWER(fifo_async_tb)
-LIBPD_VIVADO(fifo_async)
+# Create clocks with some arbitrary phase.
+#
+create_clock -period 10.00 -name WCLK -waveform {0.000 5.000} [get_ports wclk]
+create_clock -period 13.00 -name RCLK -waveform {0.000 8.000} [get_ports rclk]
+
+set_input_delay -clock WCLK 1.0 [get_ports push]
+set_input_delay -clock WCLK 1.0 [get_ports push_data]
+set_input_delay -clock RCLK 1.0 [get_ports pop]
+set_output_delay -clock RCLK 1.0 [get_ports pop_data]
+set_output_delay -clock RCLK 1.0 [get_ports empty_r]
+set_output_delay -clock WCLK 1.0 [get_ports full_r]
+
+# Create false-path across synchronization boundary to disable timing
+# analysis.
+#
+set_clock_groups -asynchronous -group {WCLK} -group {RCLK}

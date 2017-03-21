@@ -97,7 +97,6 @@ module fifo_async #(
   logic                                 uarch_empty_r;
   //
   logic                                 full_w;
-  logic                                 full_r;
   //
   logic [PTR_BITS-1:0]                  wptr_gray_w;
   logic [PTR_BITS-1:0]                  wptr_gray_r;

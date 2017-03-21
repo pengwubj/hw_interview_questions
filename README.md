@@ -15,7 +15,7 @@ interviewer in a candidates solution provided.
 * verilator >= 3.9
 * clang >= 3.9
 
-## Build Steps
+## Build Steps (SIM)
 ~~~~
 git clone https://github.com/stephenry/hw_interview_questions
 cd hw_interview_questions
@@ -26,6 +26,16 @@ cmake ../
 make
 ~~~~
 
+## PD (VIVADO)
+
+A standard Vivado flow is supported for each answer. PD libaries must
+be explicitly selected during configuration (below). Within each answer,
+a new target 'vivado' is present that invokes a standard Vivado flow.
+
+~~~~
+cmake ../ -DTARGET_VIVADO
+make vivado
+~~~~
 
 ## Run Steps
 Upon successful completion of the build process. Tests can be executed by

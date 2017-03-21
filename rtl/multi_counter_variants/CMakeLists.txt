@@ -26,3 +26,5 @@
 ##========================================================================== //
 
 EMIT_ANSWER(multi_counter_variants)
+
+LIBPD_VIVADO(multi_counter_variants)
