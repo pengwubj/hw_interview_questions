@@ -111,7 +111,7 @@ struct FifoMultiPushTb : libtb::TopLevel
         if (FIFO_IS_NOT_FULL(1)) {
             push_1_ = true;
             push_1_ = libtb::random<DataT>();
-        }n
+        }
         i--;
 
         //
