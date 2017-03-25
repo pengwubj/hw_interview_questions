@@ -95,42 +95,30 @@ struct FifoMultiPushTb : libtb::TopLevel
 
         LIBTB_REPORT_DEBUG("PUSH_RANDOM");
         i = 1;
-#define FIFO_IS_NOT_FULL(n)  ~(full_r_ & (1 << (n)))
+#define FIFO_IS_FULL(n)  (full_r_ & (1 << (n)))
 
-        if (i == 0) goto __end;
-
-        if (FIFO_IS_NOT_FULL(0)) {
+        switch (i)
+        {
+        case 4:
+            if (FIFO_IS_FULL(0)) goto __end;
             push_0_ = true;
             push_0_ = libtb::random<DataT>();
-        }
-        i--;
 
-        //
-        if (i == 0) goto __end;
-
-        if (FIFO_IS_NOT_FULL(1)) {
+        case 3:
+            if (FIFO_IS_FULL(1)) goto __end;
             push_1_ = true;
             push_1_ = libtb::random<DataT>();
-        }
-        i--;
 
-        //
-        if (i == 0) goto __end;
-
-        if (FIFO_IS_NOT_FULL(2)) {
+        case 2:
+            if (FIFO_IS_FULL(2)) goto __end;
             push_2_ = true;
             push_2_ = libtb::random<DataT>();
-        }
-        i--;
 
-        //
-        if (i == 0) goto __end;
-
-        if (FIFO_IS_NOT_FULL(3)) {
+        case 1:
+            if (FIFO_IS_FULL(3)) goto __end;
             push_3_ = true;
             push_3_ = libtb::random<DataT>();
         }
-        i--;
 
     __end:
         t_wait_posedge_clk();
