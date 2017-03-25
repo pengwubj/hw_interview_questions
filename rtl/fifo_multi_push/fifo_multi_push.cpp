@@ -91,34 +91,46 @@ struct FifoMultiPushTb : libtb::TopLevel
 
     void push_random()
     {
+        t_wait_sync();
+      
         int i = libtb::random_integer_in_range(4);
 
-        LIBTB_REPORT_DEBUG("PUSH_RANDOM");
-        i = 1;
-#define FIFO_IS_FULL(n)  (full_r_ & (1 << (n)))
+        std::vector<DataT> dat;
 
+        if (full_r_) goto __end;
+        
+        DataT d;
         switch (i)
         {
         case 4:
-            if (FIFO_IS_FULL(0)) goto __end;
-            push_0_ = true;
-            push_0_ = libtb::random<DataT>();
+            d = libtb::random<DataT>();
+            push_3_ = true;
+            push_3_data_ = d;
+            dat.push_back(d);
 
         case 3:
-            if (FIFO_IS_FULL(1)) goto __end;
-            push_1_ = true;
-            push_1_ = libtb::random<DataT>();
+            d = libtb::random<DataT>();
+            push_2_ = true;
+            push_2_data_ = d;
+            dat.push_back(d);
 
         case 2:
-            if (FIFO_IS_FULL(2)) goto __end;
-            push_2_ = true;
-            push_2_ = libtb::random<DataT>();
+            d = libtb::random<DataT>();
+            push_1_ = true;
+            push_1_data_ = d;
+            dat.push_back(d);
 
         case 1:
-            if (FIFO_IS_FULL(3)) goto __end;
-            push_3_ = true;
-            push_3_ = libtb::random<DataT>();
+            d = libtb::random<DataT>();
+            push_0_ = true;
+            push_0_data_ = d;
+            dat.push_back(d);
         }
+
+        std::reverse(std::begin(dat), std::end(dat));
+        std::copy(std::begin(dat),
+                  std::end(dat),
+                  std::back_inserter(expectation_));
 
     __end:
         t_wait_posedge_clk();
@@ -143,9 +155,7 @@ struct FifoMultiPushTb : libtb::TopLevel
 
     void  m_popper()
     {
-        pop_0_ = false;
-        if (!empty_r_)
-            pop_0_ = libtb::random_integer_in_range(100) < 80;
+        pop_0_ = true;
     }
 
     void m_checker()

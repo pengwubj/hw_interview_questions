@@ -126,8 +126,6 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
   `FIFO_MEM(3);
 
 `define FIFO_PTRS(__i)                               \
-  logic                       fifo_``__i``_push;     \
-  logic                       fifo_``__i``_pop;      \
   logic                       fifo_``__i``_empty_w;  \
   logic                       fifo_``__i``_empty_r;  \
   logic                       fifo_``__i``_full_w;   \
@@ -196,7 +194,7 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
           fifo_mem_1_w   = push_0_data;
           //
           fifo_mem_2_en  = push_1;
-          fifo_mem_3_w   = push_1_data;
+          fifo_mem_2_w   = push_1_data;
           //
           fifo_mem_3_en  = push_2;
           fifo_mem_3_w   = push_2_data;
@@ -246,8 +244,7 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
       endcase
 
       //
-      pop_idx_1h_w    = pop_idx_1h_r << 1;
-      pop_idx_1h_en   = pop_0;
+      pop_idx_1h_en   = pop_0 & (~empty_r);
 
       //
       unique case (pop_idx_1h_r)
@@ -259,10 +256,14 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
       endcase
 
 `define FIFO_PTRS(__i)\
-      fifo_``__i``_rd_ptr_w = fifo_``__i``_rd_ptr_r + 'b1;\
-      fifo_``__i``_wr_ptr_w = fifo_``__i``_wr_ptr_r + 'b1;\
-      fifo_``__i``_rd_ptr_en = 'b0;\
-      fifo_``__i``_wr_ptr_en = 'b0;\
+      fifo_``__i``_rd_ptr_en = pop_idx_1h_r [__i] & pop_idx_1h_en;\
+      fifo_``__i``_wr_ptr_en = fifo_mem_``__i``_en;\
+      fifo_``__i``_rd_ptr_w =\
+        fifo_``__i``_rd_ptr_en ? fifo_``__i``_rd_ptr_r + 'b1 :\
+                                 fifo_``__i``_rd_ptr_r;\
+      fifo_``__i``_wr_ptr_w =\
+        fifo_``__i``_wr_ptr_en ? fifo_``__i``_wr_ptr_r + 'b1 :\
+                                 fifo_``__i``_wr_ptr_r;\
       fifo_``__i``_full_w =\
          (fifo_``__i``_rd_ptr_w.b ^ fifo_``__i``_wr_ptr_w.b) &\
          (fifo_``__i``_rd_ptr_w.mem == fifo_``__i``_wr_ptr_w.mem);\
@@ -276,7 +277,7 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
 `undef FIFO_PTRS
 
        //
-       pop_0_valid_w = pop_0;
+       pop_0_valid_w = pop_idx_1h_en;
 
     end // block: push_PROC
 
@@ -397,6 +398,20 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
        pop_0_valid_r <= '0;
     else
        pop_0_valid_r <= pop_0_valid_w;
+  
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk)
+    begin
+      if (fifo_mem_0_en)
+        fifo_mem_0_r [fifo_0_wr_ptr_r.mem] <= fifo_mem_0_w;
+      if (fifo_mem_1_en)
+        fifo_mem_1_r [fifo_1_wr_ptr_r.mem] <= fifo_mem_1_w;
+      if (fifo_mem_2_en)
+        fifo_mem_2_r [fifo_2_wr_ptr_r.mem] <= fifo_mem_2_w;
+      if (fifo_mem_3_en)
+        fifo_mem_3_r [fifo_3_wr_ptr_r.mem] <= fifo_mem_3_w;
+    end
 
   // ======================================================================== //
   //                                                                          //
@@ -415,12 +430,22 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
 
   // ------------------------------------------------------------------------ //
   //
-  rotate #(.W(FIFO_N)) u_rotate (
+  rotate #(.W(FIFO_N)) u_rotate_push (
     //
       .x                 (push_idx_1h_r      )
     , .n                 (push_vec_cnt       )
     //
     , .y                 (push_idx_1h_w      )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  rotate #(.W(FIFO_N)) u_rotate_pop (
+    //
+      .x                 (pop_idx_1h_r       )
+    , .n                 ('b1                )
+    //
+    , .y                 (pop_idx_1h_w       )
   );
 
 endmodule // fifo_multi_push

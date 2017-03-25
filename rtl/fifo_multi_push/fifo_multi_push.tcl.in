@@ -25,5 +25,16 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(fifo_multi_push)
-LIBPD_VIVADO(fifo_multi_push)
+set prj fifo_multi_push
+
+create_project $prj -in_memory
+read_verilog @CMAKE_CURRENT_SOURCE_DIR@/$prj.sv
+read_verilog @LIBV_ROOT@/popcnt.sv
+read_verilog @LIBV_ROOT@/rotate.sv
+read_xdc @CMAKE_CURRENT_BINARY_DIR@/$prj.xdc
+synth_design -name $prj -top $prj -verilog_define LIBPD=1
+opt_design
+place_design
+phys_opt_design
+route_design
+report_timing_summary
