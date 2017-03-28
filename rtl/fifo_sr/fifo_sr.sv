@@ -56,7 +56,7 @@ module fifo_sr #(
 
    , input                                   pop
    //
-   , output logic                            pop_data_valid_r
+   , output logic                            pop_data_valid
    , output logic [W-1:0]                    pop_data
 
    //======================================================================== //
@@ -82,10 +82,12 @@ module fifo_sr #(
   //
   n_t                         wr_ptr_1h_r;
   n_t                         wr_ptr_1h_w;
+  n_t                         wr_ptr_1h_shift;
   logic                       wr_ptr_1h_en;
   //
   n_t                         rd_ptr_1h_r;
   n_t                         rd_ptr_1h_w;
+  n_t                         rd_ptr_1h_shift;
   logic                       rd_ptr_1h_en;
   //
   logic                       empty_w;
@@ -95,7 +97,7 @@ module fifo_sr #(
   w_t                         mem_r [N-1:0];
   w_t                         mem_w;
   //
-  logic                       pop_data_valid_w;
+  logic                       pop_data_valid;
 
   // ======================================================================== //
   //                                                                          //
@@ -109,21 +111,31 @@ module fifo_sr #(
     begin : cntrl_PROC
 
       //
-      pop_data_valid_w  = pop;
+      pop_data_valid    = pop;
 
       //
       rd_ptr_1h_en      = pop;
-      rd_ptr_1h_w       = pop ? rd_ptr_1h_r << 1 : rd_ptr_1h_r;
-
-      full_w            = '0;
+      rd_ptr_1h_w       = pop ? rd_ptr_1h_shift : rd_ptr_1h_r;
 
       //
       wr_ptr_1h_en      = push;
-      wr_ptr_1h_w       = push ? wr_ptr_1h_r << 1 : wr_ptr_1h_r;
+      wr_ptr_1h_w       = push ? wr_ptr_1h_shift : wr_ptr_1h_r;
 
       //
-      empty_w           = (wr_ptr_1h_w == rd_ptr_1h_w);
+      case ({full_r})
+        1'b1:    full_w   = (~pop);
+        default: full_w   = (wr_ptr_1h_r != rd_ptr_1h_r) &&
+                            (wr_ptr_1h_w == rd_ptr_1h_r);
+      endcase
 
+      //
+      case ({empty_r})
+        1'b1:    empty_w  = (~push);
+        default: empty_w  = (wr_ptr_1h_r != rd_ptr_1h_r) &&
+                            (wr_ptr_1h_r == rd_ptr_1h_w);
+      endcase // case ({empty_r})
+
+      //
       mem_en            = push ? wr_ptr_1h_r : '0;
       mem_w             = push_data;
 
@@ -142,11 +154,8 @@ module fifo_sr #(
 
   // ------------------------------------------------------------------------ //
   //
-  always_ff @(posedge clk)
-    if (rst)
-      pop_data_valid_r <= 'b0;
-    else
-      pop_data_valid_r <= pop_data_valid_w;
+  rotate #(.W(N)) u_rotate_wr (.x(wr_ptr_1h_r), .n('b1), .y(wr_ptr_1h_shift));
+  rotate #(.W(N)) u_rotate_rd (.x(rd_ptr_1h_r), .n('b1), .y(rd_ptr_1h_shift));
 
   // ------------------------------------------------------------------------ //
   //

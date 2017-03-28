@@ -47,6 +47,8 @@ invoking the generated executable in the RTL directory.
   asynchronous FIFO.
 * __fifo_n__ Answer to construct N-statically sized FIFO from a single
   dual-ported, synchronous SRAM.
+* __fifo_sr__ Answer to implement a shift-register FIFO in a power efficient
+  manner.
 * __gates_from_MUX2X1__ Answer to derive AND, OR, XOR and INV logic gates from a
   MUX2X standard cell.
 * __increment__ Answer to derive logic to compute an increment function.

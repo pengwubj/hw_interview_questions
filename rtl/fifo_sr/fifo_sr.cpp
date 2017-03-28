@@ -31,13 +31,13 @@
 #include "Vfifo_sr.h"
 
 #define PORTS(__func)                           \
-    __func(push, bool)                          \
-    __func(push_data, DataT)                    \
-    __func(pop, bool)                           \
-    __func(pop_data_valid_r, bool)              \
-    __func(pop_data, DataT)                     \
-    __func(empty_r, bool)                       \
-    __func(full_r, bool)
+  __func(push, bool)                            \
+  __func(push_data, DataT)                      \
+  __func(pop, bool)                             \
+  __func(pop_data_valid, bool)                  \
+  __func(pop_data, DataT)                       \
+  __func(empty_r, bool)                         \
+  __func(full_r, bool)
 
 struct FifoTb : libtb::TopLevel
 {
@@ -54,10 +54,9 @@ struct FifoTb : libtb::TopLevel
 #undef __construct_signals
     {
         SC_METHOD(m_checker);
-        sensitive << e_tb_sample();
+        sensitive << clk().posedge_event();
 
-        SC_METHOD(m_popper);
-        sensitive << e_tb_sample();
+        SC_THREAD(t_popper);
 
         uut_.clk(clk());
         uut_.rst(rst());
@@ -69,7 +68,6 @@ struct FifoTb : libtb::TopLevel
 
     void push_idle()
     {
-        //
         push_ = false;
         push_data_ = DataT();
     }
@@ -78,17 +76,13 @@ struct FifoTb : libtb::TopLevel
     {
         t_wait_sync();
 
-        int i = libtb::random_integer_in_range(4);
-
-        std::vector<DataT> dat;
-
-        if (full_r_) return;
-
+        while (full_r_) t_wait_sync();
+        
         const DataT d = libtb::random<DataT>();
         push_ = true;
         push_data_ = d;
         t_wait_posedge_clk();
-        expectation_.push_back(d);
+        queue_.push_back(d);
         push_idle();
     }
 
@@ -97,30 +91,40 @@ struct FifoTb : libtb::TopLevel
         t_wait_reset_done();
 
         LIBTB_REPORT_INFO("Stimulus starts...");
-        int n = 100;
+        int n = N;
         while (n--)
             push_random();
+
+        t_wait_posedge_clk(20);
         LIBTB_REPORT_INFO("Stimulus ends.");
         return 0;
     }
 
-    void  m_popper()
+    void  t_popper()
     {
-        pop_ = true;
+        pop_ = false;
+
+        t_wait_posedge_clk(100);
+        while (true) {
+          t_wait_sync();
+
+          pop_ = !empty_r_;
+          t_wait_posedge_clk();
+        }
     }
 
     void m_checker()
     {
-        if (pop_data_valid_r_) {
+        if (pop_data_valid_) {
             const DataT actual = pop_data_;
 
-            if (expectation_.size() == 0) {
+            if (queue_.size() == 0) {
                 LIBTB_REPORT_ERROR("Unexpected data valid");
                 return ;
             }
 
-            const DataT expected = expectation_.front();
-            expectation_.pop_front();
+            const DataT expected = queue_.front();
+            queue_.pop_front();
 
             if (actual != expected) {
                 std::stringstream ss;
@@ -133,9 +137,9 @@ struct FifoTb : libtb::TopLevel
         }
     }
 
-    std::deque<DataT> expectation_;
+    std::deque<DataT> queue_;
 
-    const int N{1000};
+    const int N{100};
 #define __declare_signals(__name, __type)       \
     sc_core::sc_signal<__type> __name##_;
     PORTS(__declare_signals)
