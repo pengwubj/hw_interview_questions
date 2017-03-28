@@ -45,6 +45,8 @@ invoking the generated executable in the RTL directory.
 * __count_ones__ Answer to compute the population count of an input vector.
 * __fifo_async__ Answer to demonstrate the construction of a standard
   asynchronous FIFO.
+* __fifo_n__ Answer to construct N-statically sized FIFO from a single
+  dual-ported, synchronous SRAM.
 * __gates_from_MUX2X1__ Answer to derive AND, OR, XOR and INV logic gates from a
   MUX2X standard cell.
 * __increment__ Answer to derive logic to compute an increment function.
