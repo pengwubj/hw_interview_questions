@@ -25,15 +25,21 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
+`define HAS_DETFF 1
+
 module clk_div_by_3 (input clk, input rst, output logic clk_div_3);
 
 
   logic [1:0] cnt_pos_r, cnt_pos_w;
   logic [1:0] cnt_neg_r, cnt_neg_w;
 
-  logic cnt_pos_out_r, cnt_pos_out_w;
-  logic cnt_neg_out_r, cnt_neg_out_w;
-  logic clk_div_3_w;
+
+  logic       cnt_pos_out_r;
+  logic       cnt_neg_out_r;
+`ifndef HAS_DETFF
+  logic       cnt_pos_out_w;
+  logic       cnt_neg_out_w;
+`endif
 
   always_comb
     begin
@@ -41,25 +47,28 @@ module clk_div_by_3 (input clk, input rst, output logic clk_div_3);
       cnt_neg_w = (cnt_neg_r == 'd2) ? 'b0 : cnt_neg_r + 'b1;
     end
 
-  always_comb clk_div_3_w = cnt_pos_out_r | cnt_neg_out_r;
+`ifdef HAS_DETFF
+  // On FPGA flows, attempt to avoid glitches by flopping all combinatorial
+  // logic in the path before clock generation. The presence of the OR is
+  // undersirable but necessary.
+  //
+  always_comb clk_div_3 = cnt_pos_out_r | cnt_neg_out_r;
+`else
+  // Flop output using Double-Edge Triggered FF to eliminate any possibility of
+  // glitching on generated clock. NOTE: DETFF are unsupported on FPGA flows.
+  //
+  detff u_detff (.q(clk_div_3), .d_p(cnt_pos_w), .d_n(cnt_pos_n), .clk(clk));
+`endif
 
-//`ifdef VIVADO
-//`if 0
-  // TBD: required as dedicated I/O which we do not allocate.
-//  oddr #(.W(1)) u_oddr (.q(clk_div_3),
-//                        .d1(clk_div_3_w),
-//                        .d2(clk_div_3_w),
-//                        .clk1(clk),
-//                        .clk2(clk));
-//`else
-  always_comb clk_div_3 = clk_div_3_w;
-//`endif
-
+`ifdef HAS_DETFF
   always_ff @(posedge clk)
     cnt_pos_out_r <= (cnt_pos_w == '0);
-  
+`endif
+
+`ifdef HAS_DETFF
   always_ff @(negedge clk)
     cnt_neg_out_r <= (cnt_neg_w == '0);
+`endif
 
   always_ff @(posedge clk or negedge rst)
     if (rst)
