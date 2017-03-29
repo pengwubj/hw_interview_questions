@@ -23,7 +23,8 @@ the final 1 hot vector.
 # Complexity
 
 O(N) lookup operations are required. Lookup is linear with the number of table
-entries. This can through you because one can easily forget that O(2N+1)=O(N).
+entries. Recall that O(2N+1)=O(N), as one could mistakely assume that the 2N+1
+table can only be queried using N operations..
 
 O(1) state is required (with respect to N).
 
