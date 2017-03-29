@@ -25,20 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-ADD_SUBDIRECTORY(one_or_two)
-ADD_SUBDIRECTORY(latency)
-ADD_SUBDIRECTORY(multi_counter)
-ADD_SUBDIRECTORY(multi_counter_variants)
-ADD_SUBDIRECTORY(gates_from_MUX2X1)
-ADD_SUBDIRECTORY(increment)
-ADD_SUBDIRECTORY(fifo_async)
-ADD_SUBDIRECTORY(fifo_multi_push)
-ADD_SUBDIRECTORY(fifo_n)
-ADD_SUBDIRECTORY(fifo_sr)
-ADD_SUBDIRECTORY(count_ones)
-ADD_SUBDIRECTORY(mcp_formulation)
-ADD_SUBDIRECTORY(detect_sequence)
-ADD_SUBDIRECTORY(vending_machine_fsm)
-ADD_SUBDIRECTORY(vending_machine_dp)
-ADD_SUBDIRECTORY(clk_div_by_3)
-ADD_SUBDIRECTORY(missing_duplicated_word)
+EMIT_ANSWER(missing_duplicated_word)

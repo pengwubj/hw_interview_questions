@@ -68,7 +68,10 @@ invoking the generated executable in the RTL directory.
   simple vending machine.
 * __vending_machine_dp__ Variant of FSM solution whereby some accumulation of a
   running count is required before an IRN-BRU shall be emitted.
-* clk_div_by_3 Divide a clock by an odd number while retaining a 50% duty cycle.
+* __clk_div_by_3__ Divide a clock by an odd number while retaining a 50% duty
+  cycle.
+* __missing_duplicated_word__ Answer to detect the value of a non-duplicated
+  integer in a state table containing duplicated entries.
 
 ## Disclaimer
 Contributions are welcome however please consider that the current project
