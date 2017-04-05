@@ -147,4 +147,3 @@ module detect_sequence (
     shift_r <= rst ? '0 : shift_w;
 
 endmodule // detect_sequence
-n
