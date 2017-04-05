@@ -15,7 +15,7 @@ bits set).
 
 # Commentary
 
-Multiplication is simply repeated addition over differing radii. For a
+Multiplication is simply repeated addition over differing shifts. For a
 sparse constant, multiplication can be carried out efficiently by
 infering N adders (where N is the population count of the constant)
 adding the i'th shifted version of the input (where 'i' is the
