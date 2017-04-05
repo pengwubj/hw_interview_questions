@@ -72,6 +72,8 @@ invoking the generated executable in the RTL directory.
   cycle.
 * __missing_duplicated_word__ Answer to detect the value of a non-duplicated
   integer in a state table containing duplicated entries.
+* __multiply_by_21__ Answer to demonstrate how a constant value can be
+  efficiently multiplied against a randomized vector.
 
 ## Disclaimer
 Contributions are welcome however please consider that the current project
