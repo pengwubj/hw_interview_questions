@@ -60,7 +60,8 @@ module detect_sequence (
                               STATE_S5  = 4'b0101,
                               STATE_S6  = 4'b0110,
                               STATE_S7  = 4'b0111,
-                              STATE_S8  = 4'b1000
+                              STATE_S8  = 4'b1000,
+                              STATE_SX  = 4'b1111
                             } fsm_t;
 
   //
@@ -99,7 +100,7 @@ module detect_sequence (
         `TRANSITION(6, 3, 7); // 1
         `TRANSITION(7, 8, 1); // 0
         `TRANSITION(8, 0, 1);
-        default: fsm_w   = 'x;
+        default: fsm_w   = STATE_SX;
       endcase // case (fsm_r)
 `undef TRANSITION
 
@@ -136,7 +137,7 @@ module detect_sequence (
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
-    fsm_r <= rst ? '0 : fsm_w;
+    fsm_r <= rst ? fsm_t'(0) : fsm_w;
 
   // ------------------------------------------------------------------------ //
   //

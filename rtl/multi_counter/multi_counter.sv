@@ -72,7 +72,7 @@ module multi_counter #(
   , output logic [CNTRS_W-1:0]               status_dat_r
 );
 
-  `include "libtb_tb_top_inc.vh"
+//  `include "libtb_tb_top_inc.vh"
    // ======================================================================= //
    //                                                                         //
    //  Signals                                                                //
