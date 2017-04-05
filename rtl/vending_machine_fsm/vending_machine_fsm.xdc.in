@@ -25,5 +25,7 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(one_or_two)
-LIBPD_VIVADO(one_or_two)
+create_clock -period 10.0 -name CLK [get_ports clk]
+
+set_input_delay -clock CLK 1.0 [all_inputs]
+set_output_delay -clock CLK 1.0 [all_outputs]

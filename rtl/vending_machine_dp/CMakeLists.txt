@@ -26,3 +26,4 @@
 ##========================================================================== //
 
 EMIT_ANSWER(vending_machine_dp)
+LIBPD_VIVADO(vending_machine_dp)

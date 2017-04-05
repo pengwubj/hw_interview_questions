@@ -15,7 +15,7 @@ interviewer in a candidates solution provided.
 * verilator >= 3.9
 * clang >= 3.9
 
-## Build Steps
+## Build Steps (SIM)
 ~~~~
 git clone https://github.com/stephenry/hw_interview_questions
 cd hw_interview_questions
@@ -26,6 +26,16 @@ cmake ../
 make
 ~~~~
 
+## PD (VIVADO)
+
+A standard Vivado flow is supported for each answer. PD libaries must
+be explicitly selected during configuration (below). Within each answer,
+a new target 'vivado' is present that invokes a standard Vivado flow.
+
+~~~~
+cmake ../ -DTARGET_VIVADO
+make vivado
+~~~~
 
 ## Run Steps
 Upon successful completion of the build process. Tests can be executed by
@@ -35,6 +45,10 @@ invoking the generated executable in the RTL directory.
 * __count_ones__ Answer to compute the population count of an input vector.
 * __fifo_async__ Answer to demonstrate the construction of a standard
   asynchronous FIFO.
+* __fifo_n__ Answer to construct N-statically sized FIFO from a single
+  dual-ported, synchronous SRAM.
+* __fifo_sr__ Answer to implement a shift-register FIFO in a power efficient
+  manner.
 * __gates_from_MUX2X1__ Answer to derive AND, OR, XOR and INV logic gates from a
   MUX2X standard cell.
 * __increment__ Answer to derive logic to compute an increment function.
@@ -54,6 +68,10 @@ invoking the generated executable in the RTL directory.
   simple vending machine.
 * __vending_machine_dp__ Variant of FSM solution whereby some accumulation of a
   running count is required before an IRN-BRU shall be emitted.
+* __clk_div_by_3__ Divide a clock by an odd number while retaining a 50% duty
+  cycle.
+* __missing_duplicated_word__ Answer to detect the value of a non-duplicated
+  integer in a state table containing duplicated entries.
 
 ## Disclaimer
 Contributions are welcome however please consider that the current project

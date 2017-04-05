@@ -25,5 +25,5 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(one_or_two)
-LIBPD_VIVADO(one_or_two)
+EMIT_ANSWER(clk_div_by_3)
+LIBPD_VIVADO(clk_div_by_3)

@@ -25,5 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(one_or_two)
-LIBPD_VIVADO(one_or_two)
+EMIT_ANSWER(missing_duplicated_word)

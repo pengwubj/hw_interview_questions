@@ -25,5 +25,5 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(one_or_two)
-LIBPD_VIVADO(one_or_two)
+create_clock -period 10.00 -name CLK -waveform {0.000 0.500} [get_ports clk]
+create_generated_clock -divide_by 3 -source [get_ports clk] [get_ports clk_div_3]

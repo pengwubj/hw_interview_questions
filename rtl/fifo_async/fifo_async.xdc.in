@@ -25,5 +25,19 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(one_or_two)
-LIBPD_VIVADO(one_or_two)
+# Create clocks with some arbitrary phase.
+#
+create_clock -period 10.00 -name WCLK -waveform {0.000 5.000} [get_ports wclk]
+create_clock -period 13.00 -name RCLK -waveform {0.000 8.000} [get_ports rclk]
+
+set_input_delay -clock WCLK 1.0 [get_ports push]
+set_input_delay -clock WCLK 1.0 [get_ports push_data]
+set_input_delay -clock RCLK 1.0 [get_ports pop]
+set_output_delay -clock RCLK 1.0 [get_ports pop_data]
+set_output_delay -clock RCLK 1.0 [get_ports empty_r]
+set_output_delay -clock WCLK 1.0 [get_ports full_r]
+
+# Create false-path across synchronization boundary to disable timing
+# analysis.
+#
+set_clock_groups -asynchronous -group {WCLK} -group {RCLK}

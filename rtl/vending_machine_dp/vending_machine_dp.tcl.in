@@ -25,5 +25,14 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(one_or_two)
-LIBPD_VIVADO(one_or_two)
+set prj vending_machine_dp
+
+create_project $prj -in_memory
+read_verilog @CMAKE_CURRENT_SOURCE_DIR@/$prj.sv
+read_xdc @CMAKE_CURRENT_BINARY_DIR@/$prj.xdc
+synth_design -name $prj -top $prj -verilog_define LIBPD=1
+opt_design
+place_design
+phys_opt_design
+route_design
+report_timing_summary

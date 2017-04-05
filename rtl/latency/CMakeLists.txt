@@ -26,5 +26,4 @@
 ##========================================================================== //
 
 EMIT_ANSWER(latency)
-
-EMIT_PD(latency latency.sv)
+LIBPD_VIVADO(latency)

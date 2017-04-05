@@ -26,3 +26,4 @@
 ##========================================================================== //
 
 EMIT_ANSWER(detect_sequence)
+LIBPD_VIVADO(detect_sequence)

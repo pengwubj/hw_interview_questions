@@ -25,5 +25,8 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(one_or_two)
-LIBPD_VIVADO(one_or_two)
+# Virtual clock for I/O reference
+create_clock -period 12.0 -name VCLK
+
+set_input_delay -clock VCLK 1.0 [all_inputs]
+set_output_delay -clock VCLK 1.0 [all_outputs]

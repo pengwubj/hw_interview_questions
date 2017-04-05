@@ -1,5 +1,5 @@
 //========================================================================== //
-// Copyright (c) 2016-17, Stephen Henry
+// Copyright (c) 2016, Stephen Henry
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -26,64 +26,49 @@
 //========================================================================== //
 
 #include <libtb.h>
-#include "Vdetect_sequence.h"
+#include "Vclk_div_by_3.h"
 
 #define PORTS(__func)                           \
-    __func(in, bool)                            \
-    __func(fail_r, bool)
+  __func(clk_div_3, bool)
 
-class DetectSequenceTb : libtb::TopLevel
+struct ClkDivBy3Tb : libtb::TopLevel
 {
-public:
-    SC_HAS_PROCESS(DetectSequenceTb);
-    DetectSequenceTb(sc_core::sc_module_name mn = "t")
-        : uut_("uut")
-#define __declare_signals(__name, __type)       \
-        , __name##_(#__name)
-        PORTS(__declare_signals)
-#undef __declare_signals
-    {
-        SC_METHOD(m_checker);
-        dont_initialize();
-        sensitive << e_tb_sample();
-
-        uut_.clk(clk());
-        uut_.rst(rst());
-#define __bind_signals(__name, __type)       \
-        uut_.__name(__name##_);
-        PORTS(__bind_signals)
+  using UUT = Vclk_div_by_3;
+  
+  SC_HAS_PROCESS(ClkDivBy3Tb);
+  ClkDivBy3Tb(sc_core::sc_module_name mn = "t")
+    : libtb::TopLevel(mn)
+    , uut_("uut")
+#define __construct_signals(__name, __type)\
+    , __name##_(#__name)
+      PORTS(__construct_signals)
+#undef __construct_signals
+  {
+    uut_.clk(clk());
+    uut_.rst(rst());
+#define __bind_signals(__name, __type)          \
+    uut_.__name(__name##_);
+    PORTS(__bind_signals)
 #undef __bind_signals
+  }
 
-            wave_on("foo.vcd", uut_);
-    }
+  bool run_test() {
+    LIBTB_REPORT_INFO("Stimulus starts...");
+    wait(1000, SC_NS);
+    LIBTB_REPORT_INFO("Stimulus ends.");
 
-    bool run_test()
-    {
-        LIBTB_REPORT_INFO("Stimulus starts....");
-        for (int i = 0; i < N; i++) {
-            in_ = (libtb::random_integer_in_range(100) < 40);
-            t_wait_posedge_clk();
-        }
-        LIBTB_REPORT_INFO("Stimulus ends.");
-        return false;
-    }
+    return true;
+  }
 
-    void m_checker() {
-        LIBTB_ASSERT_ERROR(!fail_r_);
-    }
-
-    const int N{10000};
+  UUT uut_;
 #define __declare_signals(__name, __type)       \
-    sc_core::sc_signal<__type> __name##_;
-    PORTS(__declare_signals)
+  sc_core::sc_signal<__type> __name##_;
+  PORTS(__declare_signals)
 #undef __declare_signals
-    Vdetect_sequence uut_;
 };
 
-int sc_main (int argc, char **argv)
+int sc_main(int argc, char **argv)
 {
-    using namespace libtb;
-    DetectSequenceTb t;
-    LibTbContext::init(argc, argv);
-    return LibTbContext::start();
+  using namespace libtb;
+  return LibTbSim<ClkDivBy3Tb>(argc, argv).start();
 }

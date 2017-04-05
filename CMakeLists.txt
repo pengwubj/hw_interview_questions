@@ -40,6 +40,7 @@ SET(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
   ${CMAKE_SOURCE_DIR}/cmake
   ${CMAKE_SOURCE_DIR}/contrib/libtb/cmake
+  ${CMAKE_SOURCE_DIR}/contrib/libpd/cmake
   )
 
 INCLUDE(cmake/Macros.cmake)
