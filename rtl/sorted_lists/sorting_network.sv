@@ -39,24 +39,35 @@ module sorting_network
    , input                                   rst
 
    //
+   , input                                   unsorted_valid
    , input  sorted_lists_pkg::table_state_t  unsorted
    //
    , output sorted_lists_pkg::table_state_t  sorted_r
 );
   import sorted_lists_pkg::*;
 
-  task compare_and_swap (inout table_state_t t, int l, r);
+  //
+  function table_state_t compare_and_swap (input table_state_t x, int a, int b);
     begin
-      key_t l_key = t.e[l].key;
-      key_t r_key = t.e[r].key;
+      table_state_t r = x;
+      key_t l_key = r.e[a].key;
+      key_t r_key = r.e[b].key;
       if (l_key < r_key) begin
-        entry_t e  = t.e[l];
-        t.e[l]     = t.e[r];
-        t.e[r]     = e;
+        entry_t e  = r.e[a];
+        r.e[a]     = r.e[b];
+        r.e[b]     = e;
       end
+      return r;
     end
-  endtask // compare_and_swap
+  endfunction // table_state_t
 
+  //
+  logic [2:0]                         valid_r;
+  logic [2:0]                         valid_w;
+  //
+  table_state_t                       s0_r, s0_w;
+  table_state_t                       s1_r, s1_w;
+  table_state_t                       s2_r, s2_w;
 
   // ======================================================================== //
   //                                                                          //
@@ -69,13 +80,52 @@ module sorting_network
   always_comb
     begin : sort_PROC
 
+      //
+      valid_w = {valid_r [1:0], unsorted_valid};
 
-    end
+      // S0
+      //
+      s0_w  = compare_and_swap(unsorted, 1, 3);
+      s0_w  = compare_and_swap(s0_w, 0, 2);
 
+      // S1
+      //
+      s1_w  = compare_and_swap(s0_r, 2, 3);
+      s1_w  = compare_and_swap(s1_w, 0, 1);
+
+      // S2
+      //
+      s2_w  = compare_and_swap(s1_r, 1, 2);
+
+      //
+      sorted_r = s2_r;
+
+    end // block: sort_PROC
+  
   // ======================================================================== //
   //                                                                          //
   // Sequential Logic                                                         //
   //                                                                          //
   // ======================================================================== //
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk)
+    if (rst)
+      valid_r <= '0;
+    else
+      valid_r <= valid_w;
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk)
+    begin
+      if (valid_w [0])
+        s0_r <= s0_w;
+      if (valid_r [1])
+        s1_r <= s1_w;
+      if (valid_r [2])
+        s2_r <= s2_w;
+    end
 
 endmodule // sorting_network

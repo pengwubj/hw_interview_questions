@@ -118,6 +118,13 @@ module sorted_lists
     table_state_t t;
   } ucode_qry_t;
 
+  //
+  typedef struct packed {
+    logic vld;
+    id_t id;
+    level_t level;
+  } qry_delay_pipe_t;
+
   // ======================================================================== //
   //                                                                          //
   // Wires                                                                    //
@@ -146,9 +153,6 @@ module sorted_lists
   ucode_qry_t                           ucode_qry_2_r;
   ucode_qry_t                           ucode_qry_2_w;
   //
-  ucode_qry_t                           ucode_qry_3_r;
-  ucode_qry_t                           ucode_qry_3_w;
-  //
   `DPSRAM_SIGNALS(qry_table_, $bits(table_state_t), $clog2(M));
   `DPSRAM_SIGNALS(upt_table_, $bits(table_state_t), $clog2(M));
   //
@@ -167,16 +171,24 @@ module sorted_lists
   logic                                 upt_error_vld_w;
   id_t                                  upt_error_id_w;
   //
-  logic [4:0]                           upt_pipe_vld_r;
-  logic [4:0]                           upt_pipe_vld_w;
+  logic [3:0]                           upt_pipe_vld_r;
+  logic [3:0]                           upt_pipe_vld_w;
   //
-  logic [4:0]                           qry_pipe_vld_r;
-  logic [4:0]                           qry_pipe_vld_w;
+  logic [2:0]                           qry_pipe_vld_r;
+  logic [2:0]                           qry_pipe_vld_w;
   //
   n_d_t                                 ucode_upt_3_t_vld;
   n_t                                   vld_not_set_e;
   n_d_t                                 ucode_upt_3_t_hit;
   n_t                                   hit_e;
+  //
+  qry_delay_pipe_t                      qry_delay_pipe_in;
+  qry_delay_pipe_t                      qry_delay_pipe_out_r;
+  //
+  table_state_t                         ucode_qry_X_sorted_r;
+  n_d_t                                 ucode_qry_X_valid;
+  logic [$clog2(N):0]                   ucode_qry_X_valid_popcnt;
+  entry_t                               ucode_qry_X_entry;
 
   // ======================================================================== //
   //                                                                          //
@@ -190,10 +202,12 @@ module sorted_lists
     begin
 
       //
+      ucode_upt_3_t_vld = '0;
       for (int i = 0; i < N; i++)
         ucode_upt_3_t_vld [i]  = ucode_upt_2_r.t.e[i].vld;
 
       //
+      ucode_upt_3_t_hit = '0;
       for (int i = 0; i < N; i++)
         ucode_upt_3_t_hit [i] = ucode_upt_2_r.t.e[i].vld &&
                    (ucode_upt_3_r.t.e[i].key == ucode_upt_2_r.u.key);
@@ -204,6 +218,10 @@ module sorted_lists
   always_comb
     begin : update_exe_PROC
 
+      //
+      ucode_upt_3_w    = ucode_upt_2_r;
+
+      //
       case (ucode_upt_2_r.u.op)
         OP_CLEAR: begin
           // CLEAR command. Invalidate all state associated with ID.
@@ -250,20 +268,21 @@ module sorted_lists
     begin : update_pipe_PROC
 
       //
-      upt_pipe_vld_w   = { upt_pipe_vld_r [3:0], upt_vld };
+      upt_pipe_vld_w   = { upt_pipe_vld_r [2:0], upt_vld };
 
       //
       ucode_upt_0_w    = '0;
-      ucode_upt_0_w.u  = '{upt_id, upt_op, upt_key, upt_size};
+      ucode_upt_0_w.u.id = upt_id;
+      ucode_upt_0_w.u.op = op_t'(upt_op);
+      ucode_upt_0_w.u.key = upt_key;
+      ucode_upt_0_w.u.size = upt_size;
 
       //
       ucode_upt_1_w    = ucode_upt_0_r;
 
       //
       ucode_upt_2_w    = ucode_upt_1_r;
-
-      //
-      ucode_upt_3_w    = ucode_upt_2_r;
+      ucode_upt_2_w.t  = upt_table_dout1;
 
       //
       ntf_vld_w   = '0;
@@ -275,10 +294,21 @@ module sorted_lists
   // ------------------------------------------------------------------------ //
   //
   always_comb
+    begin
+
+      ucode_qry_X_valid = '0;
+      for (int i = 0; i < N; i++)
+        ucode_qry_X_valid [i] = ucode_qry_X_sorted_r.e [i].vld;
+
+    end
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb
     begin : qry_pipe_PROC
 
       //
-      qry_pipe_vld_w       = { qry_pipe_vld_r [3:0], qry_vld };
+      qry_pipe_vld_w       = { qry_pipe_vld_r [1:0], qry_vld };
 
       //
       ucode_qry_0_w        = '0;
@@ -290,16 +320,24 @@ module sorted_lists
 
       //
       ucode_qry_2_w        = ucode_qry_1_r;
+      ucode_qry_2_w.t      = qry_table_dout1;
 
       //
-      ucode_qry_3_w        = ucode_qry_2_r;
+      qry_delay_pipe_in    = '{qry_pipe_vld_r [2],
+                               ucode_qry_2_r.id,
+                               ucode_qry_2_r.level};
 
+      ucode_qry_X_entry    = '0;
+      for (int i = 0; i < N; i++)
+        ucode_qry_X_entry |= (qry_delay_pipe_out_r.level == level_t'(i))
+          ? ucode_qry_X_sorted_r.e[i] : '0;
+      
       //
-      qry_resp_vld_w       = '0;
-      qry_key_w            = '0;
-      qry_size_w           = '0;
-      qry_error_w          = '0;
-      qry_listsize_w       = '0;
+      qry_resp_vld_w       = qry_delay_pipe_out_r.vld;
+      qry_key_w            = ucode_qry_X_entry.key;
+      qry_size_w           = ucode_qry_X_entry.size;
+      qry_error_w          = (~ucode_qry_X_entry.vld);
+      qry_listsize_w       = listsize_t'(ucode_qry_X_valid_popcnt);
 
     end // block: qry_pipe_PROC
 
@@ -357,16 +395,16 @@ module sorted_lists
   always_ff @(posedge clk) begin : ucode_upt_reg_PROC
 
     if (upt_pipe_vld_w [0])
-      ucode_upt_0_r <= ucode_upt_0_r;
+      ucode_upt_0_r <= ucode_upt_0_w;
 
     if (upt_pipe_vld_w [1])
-      ucode_upt_1_r <= ucode_upt_1_r;
+      ucode_upt_1_r <= ucode_upt_1_w;
 
     if (upt_pipe_vld_w [2])
-      ucode_upt_2_r <= ucode_upt_2_r;
+      ucode_upt_2_r <= ucode_upt_2_w;
 
     if (upt_pipe_vld_w [3])
-      ucode_upt_3_r <= ucode_upt_3_r;
+      ucode_upt_3_r <= ucode_upt_3_w;
 
   end // block: ucode_upt_reg_PROC
 
@@ -383,16 +421,13 @@ module sorted_lists
   always_ff @(posedge clk) begin : ucode_qry_reg_PROC
 
     if (qry_pipe_vld_w [0])
-      ucode_qry_0_r <= ucode_qry_0_r;
+      ucode_qry_0_r <= ucode_qry_0_w;
 
     if (qry_pipe_vld_w [1])
-      ucode_qry_1_r <= ucode_qry_1_r;
+      ucode_qry_1_r <= ucode_qry_1_w;
 
     if (qry_pipe_vld_w [2])
-      ucode_qry_2_r <= ucode_qry_2_r;
-
-    if (qry_pipe_vld_w [3])
-      ucode_qry_3_r <= ucode_qry_3_r;
+      ucode_qry_2_r <= ucode_qry_2_w;
 
   end // block: ucode_qry_reg_PROC
 
@@ -453,6 +488,26 @@ module sorted_lists
 
   // ------------------------------------------------------------------------ //
   //
+  popcnt #(.W(N)) u_popcnt (
+    //
+      .x                      (ucode_qry_X_valid)
+    //
+    , .y                      (ucode_qry_X_valid_popcnt)
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  delay_pipe #(.W($bits(qry_delay_pipe_t)), .N(4)) u_qry_delay_pipe (
+    //
+      .clk                    (clk                 )
+    , .rst                    (rst                 )
+    //
+    , .in                     (qry_delay_pipe_in   )
+    , .out_r                  (qry_delay_pipe_out_r)
+  );
+  
+  // ------------------------------------------------------------------------ //
+  //
   ffs #(.W(N), .OPT_FIND_FIRST_ZERO(1'b1)) u_ffs (
     //
       .x                      (ucode_upt_3_t_vld  )
@@ -477,8 +532,10 @@ module sorted_lists
       .clk                    (clk                 )
     , .rst                    (rst                 )
     //
-    , .unsorted               ()
-    , .sorted_r               ()
+    , .unsorted_valid         (qry_pipe_vld_r [2]  )
+    , .unsorted               (ucode_qry_2_r.t     )
+    //
+    , .sorted_r               (ucode_qry_X_sorted_r)
   );
 
   // ------------------------------------------------------------------------ //
@@ -519,4 +576,4 @@ module sorted_lists
     , .dout2                  (qry_table_dout2    )
   );
 
-endmodule // sorted_lists
+endmodule 

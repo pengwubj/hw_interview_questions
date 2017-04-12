@@ -26,4 +26,4 @@
 ##========================================================================== //
 
 EMIT_ANSWER(sorted_lists)
-#LIBPD_VIVADO(latency)
+LIBPD_VIVADO(sorted_lists)
