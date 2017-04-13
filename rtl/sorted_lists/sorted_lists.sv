@@ -177,7 +177,8 @@ module sorted_lists
   logic [2:0]                           qry_pipe_vld_r;
   logic [2:0]                           qry_pipe_vld_w;
   //
-  n_d_t                                 ucode_upt_3_t_vld;
+  n_d_t                                 ucode_upt_2_t_vld;
+  logic [$clog2(N):0]                   ucode_upt_2_t_popcnt;
   n_t                                   vld_not_set_e;
   n_d_t                                 ucode_upt_3_t_hit;
   n_t                                   hit_e;
@@ -217,9 +218,9 @@ module sorted_lists
       endcase
 
       //
-      ucode_upt_3_t_vld = '0;
+      ucode_upt_2_t_vld = '0;
       for (int i = 0; i < N; i++)
-        ucode_upt_3_t_vld [i]  = ucode_upt_2_t_fwd.e[i].vld;
+        ucode_upt_2_t_vld [i]  = ucode_upt_2_t_fwd.e[i].vld;
 
       //
       ucode_upt_3_t_hit = '0;
@@ -248,7 +249,7 @@ module sorted_lists
         end
         OP_ADD: begin
           ucode_upt_3_w.error  = '0;
-          ucode_upt_3_w.error |= (ucode_upt_3_t_vld == '1);
+          ucode_upt_3_w.error |= (ucode_upt_2_t_vld == '1);
 
           // Defeat any consequent updates to machine state.
           if (!ucode_upt_3_w.error) begin
@@ -282,6 +283,31 @@ module sorted_lists
   // ------------------------------------------------------------------------ //
   //
   always_comb
+    begin : ntf_PROC
+
+      // Notify client when a LIST becomes empty. This occurs when:
+      //
+      //   1) The LIST is cleared
+      //
+      //   2) An entry in the list is deleted and it is the only entry in the
+      //      list
+      //
+      ntf_vld_w   =    upt_pipe_vld_r [2]
+                    & (    (ucode_upt_2_r.u.op == OP_CLEAR)
+                        || (   (ucode_upt_2_t_popcnt == 'b1)
+                             & (ucode_upt_2_r.u.op == OP_DELETE)
+                             & (~ucode_upt_3_w.error)
+                           )
+                      )
+                  ;
+      ntf_id_w    = ucode_upt_2_r.u.id;
+      ntf_key_w   = ucode_upt_3_w.t.e [hit_e].key;
+      ntf_size_w  = ucode_upt_3_w.t.e [hit_e].size;
+    end
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb
     begin : update_pipe_PROC
 
       //
@@ -310,12 +336,6 @@ module sorted_lists
         3'b001:  ucode_upt_2_w.t  = upt_table_wrbk_r;
         default: ucode_upt_2_w.t  = upt_table_dout1;
       endcase // casez ({})
-
-      //
-      ntf_vld_w                 = '0;
-      ntf_id_w                  = '0;
-      ntf_key_w                 = '0;
-      ntf_size_w                = '0;
     end
 
   // ------------------------------------------------------------------------ //
@@ -535,6 +555,15 @@ module sorted_lists
 
   // ------------------------------------------------------------------------ //
   //
+  popcnt #(.W(N)) u_ntf (
+    //
+      .x                      (ucode_upt_2_t_vld       )
+    //
+    , .y                      (ucode_upt_2_t_popcnt    )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
   popcnt #(.W(N)) u_popcnt (
     //
       .x                      (ucode_qry_X_valid)
@@ -557,7 +586,7 @@ module sorted_lists
   //
   ffs #(.W(N), .OPT_FIND_FIRST_ZERO(1'b1)) u_ffs (
     //
-      .x                      (ucode_upt_3_t_vld  )
+      .x                      (ucode_upt_2_t_vld  )
     //
     , .y                      ()
     , .n                      (vld_not_set_e      )
