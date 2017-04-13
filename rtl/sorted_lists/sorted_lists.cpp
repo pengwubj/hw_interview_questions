@@ -74,8 +74,8 @@ std::string op_to_string(int op) {
     }
 }
 
-constexpr int OPT_UPDATES = 10000;
-constexpr int OPT_QUERIES = 10000;
+constexpr int OPT_UPDATES = 100000;
+constexpr int OPT_QUERIES = 100000;
 constexpr int N = 4;
 constexpr int M = 64;
 
