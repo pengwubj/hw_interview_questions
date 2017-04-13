@@ -2,10 +2,6 @@
 
 Networking Match/Action data paths
 
-# Company
-
-<<REDACTED>>
-
 # Problem Statement
 
 M-lists (M=64) are maintained. The lists are ordered, although the ordering (GT
