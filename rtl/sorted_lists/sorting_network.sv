@@ -61,17 +61,6 @@ module sorting_network
     end
   endfunction // table_state_t
 
-  function table_state_t zero_invalid(input table_state_t x);
-    begin
-      table_state_t r  = x;
-      for (int i = 0; i < 4; i++)
-        if (!r.e[i].vld)
-          r.e[i].key = 0;
-      return r;
-    end
-  endfunction // zero_invalid
-
-
   //
   logic [2:0]                         valid_r;
   logic [2:0]                         valid_w;
@@ -98,17 +87,10 @@ module sorting_network
       // sequence is sorted based upon decreasing value of key. Therefore, at
       // the output of the module, the 0'th entry is the largest with entries
       // thereafter decreasing.
-      //
-      // zero_invalid: This is a bit of a hack. For invalid inputs, the key is
-      // reset to zero (the smallest value by definition). This is to explicitly
-      // disallow large values of KEYS for invalid entries from being considered
-      // at the output. If, for some reason, this zero value is largest. The
-      // list is by definition empty, therefore this can be easily detected by
-      // considering the valid bits.
 
       // S0
       //
-      s0_w      = zero_invalid(unsorted);
+      s0_w      = unsorted;
       s0_w      = compare_and_swap(s0_w, 1, 3);
       s0_w      = compare_and_swap(s0_w, 0, 2);
 
