@@ -1,0 +1,57 @@
+Min Delay Paths
+--------------------------------------------------------------------------------------
+Slack (MET) :             0.081ns  (arrival time - required time)
+  Source:                 u_sorted_lists/ucode_upt_3_r_reg[t][e][0][size][28]/C
+                            (rising edge-triggered cell FDRE clocked by clk_generated_clk_wiz_1  {rise@0.000ns fall@2.941ns period=5.882ns})
+  Destination:            u_sorted_lists/u_upt_table/mem_r_reg_0/DIADI[28]
+                            (rising edge-triggered cell RAMB36E1 clocked by clk_generated_clk_wiz_1  {rise@0.000ns fall@2.941ns period=5.882ns})
+  Path Group:             clk_generated_clk_wiz_1
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            0.000ns  (clk_generated_clk_wiz_1 rise@0.000ns - clk_generated_clk_wiz_1 rise@0.000ns)
+  Data Path Delay:        0.288ns  (logic 0.164ns (56.863%)  route 0.124ns (43.137%))
+  Logic Levels:           0  
+  Clock Path Skew:        0.052ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    -0.947ns
+    Source Clock Delay      (SCD):    -0.741ns
+    Clock Pessimism Removal (CPR):    -0.258ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_generated_clk_wiz_1 rise edge)
+                                                      0.000     0.000 r  
+    W30                                               0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    u_clk_gen/inst/clk
+    W30                  IBUF (Prop_ibuf_I_O)         0.223     0.223 r  u_clk_gen/inst/clkin1_ibufg/O
+                         net (fo=1, routed)           0.440     0.664    u_clk_gen/inst/clk_clk_wiz_1
+    MMCME2_ADV_X0Y2      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -2.560    -1.897 r  u_clk_gen/inst/mmcm_adv_inst/CLKOUT0
+                         net (fo=1, routed)           0.545    -1.352    u_clk_gen/inst/clk_generated_clk_wiz_1
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.026    -1.326 r  u_clk_gen/inst/clkout1_buf/O
+                         net (fo=2947, routed)        0.585    -0.741    u_sorted_lists/clk_generated
+    SLICE_X42Y141        FDRE                                         r  u_sorted_lists/ucode_upt_3_r_reg[t][e][0][size][28]/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X42Y141        FDRE (Prop_fdre_C_Q)         0.164    -0.577 r  u_sorted_lists/ucode_upt_3_r_reg[t][e][0][size][28]/Q
+                         net (fo=5, routed)           0.124    -0.453    u_sorted_lists/u_upt_table/din2[28]
+    RAMB36_X2Y28         RAMB36E1                                     r  u_sorted_lists/u_upt_table/mem_r_reg_0/DIADI[28]
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_generated_clk_wiz_1 rise edge)
+                                                      0.000     0.000 r  
+    W30                                               0.000     0.000 r  clk (IN)
+                         net (fo=0)                   0.000     0.000    u_clk_gen/inst/clk
+    W30                  IBUF (Prop_ibuf_I_O)         0.413     0.413 r  u_clk_gen/inst/clkin1_ibufg/O
+                         net (fo=1, routed)           0.480     0.893    u_clk_gen/inst/clk_clk_wiz_1
+    MMCME2_ADV_X0Y2      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -3.355    -2.463 r  u_clk_gen/inst/mmcm_adv_inst/CLKOUT0
+                         net (fo=1, routed)           0.595    -1.868    u_clk_gen/inst/clk_generated_clk_wiz_1
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.029    -1.839 r  u_clk_gen/inst/clkout1_buf/O
+                         net (fo=2947, routed)        0.892    -0.947    u_sorted_lists/u_upt_table/clk_generated
+    RAMB36_X2Y28         RAMB36E1                                     r  u_sorted_lists/u_upt_table/mem_r_reg_0/CLKBWRCLK
+                         clock pessimism              0.258    -0.689    
+    RAMB36_X2Y28         RAMB36E1 (Hold_ramb36e1_CLKBWRCLK_DIADI[28])
+                                                      0.155    -0.534    u_sorted_lists/u_upt_table/mem_r_reg_0
+  -------------------------------------------------------------------
+                         required time                          0.534    
+                         arrival time                          -0.453    
+  -------------------------------------------------------------------
+                         slack                                  0.081    
