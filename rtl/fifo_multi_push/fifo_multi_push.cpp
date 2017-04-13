@@ -140,14 +140,13 @@ struct FifoMultiPushTb : libtb::TopLevel
     bool run_test()
     {
         t_wait_reset_done();
+        reset_complete_ = true;
 
         LIBTB_REPORT_INFO("Stimulus starts...");
 
         int n = 100;
         while (n--)
             push_random();
-
-//        wait (empty_r_.posedge_event());
 
         LIBTB_REPORT_INFO("Stimulus ends.");
         return 0;
@@ -160,6 +159,9 @@ struct FifoMultiPushTb : libtb::TopLevel
 
     void m_checker()
     {
+        if (!reset_complete_)
+          return;
+        
         if (pop_0_valid_r_) {
             const DataT actual = pop_0_data_r_;
 
@@ -184,6 +186,7 @@ struct FifoMultiPushTb : libtb::TopLevel
 
     std::deque<DataT> expectation_;
 
+    bool reset_complete_{false};
     const int N{1000};
 #define __declare_signals(__name, __type)       \
     sc_core::sc_signal<__type> __name##_;

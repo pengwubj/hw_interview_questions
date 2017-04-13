@@ -82,6 +82,7 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
   typedef logic [FIFO_N-1:0] fifo_n_t;
   localparam int FIFO_DEC_N = $clog2(FIFO_N);
   typedef logic [FIFO_DEC_N-1:0] fifo_n_dec_t;
+  typedef logic [FIFO_DEC_N:0] fifo_n_dec1_t;
 
   //
   typedef struct packed {
@@ -112,7 +113,7 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
   logic                       pop_idx_1h_en;
   //
   fifo_n_t                    push_vec;
-  fifo_n_dec_t                push_vec_cnt;
+  fifo_n_dec1_t               push_vec_cnt;
 
   //
 `define FIFO_MEM(__i)                                    \
@@ -432,10 +433,10 @@ module fifo_multi_push #(parameter int W = 32, parameter int N = 8) (
   //
   rotate #(.W(FIFO_N)) u_rotate_push (
     //
-      .x                 (push_idx_1h_r      )
-    , .n                 (push_vec_cnt       )
+      .x                 (push_idx_1h_r                )
+    , .n                 (fifo_n_dec_t'(push_vec_cnt)  )
     //
-    , .y                 (push_idx_1h_w      )
+    , .y                 (push_idx_1h_w                )
   );
 
   // ------------------------------------------------------------------------ //
