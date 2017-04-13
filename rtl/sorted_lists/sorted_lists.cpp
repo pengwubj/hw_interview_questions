@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iterator>
+#include <set>
 //
 #include "Vsorted_lists.h"
 
@@ -158,12 +159,25 @@ struct MachineModel
 {
     using ListTable = std::array<std::vector<Entry>, M>;
 
+    std::set<IdT> active_updates_{};
+
+    void update_actives() {
+        active_updates_.clear();
+        int i = 20;
+        while (i--)
+            active_updates_.insert(libtb::random_integer_in_range(M - 1));
+    }
+
     // Construct a random query based upon the known state of the machine.
     //
     Update random_update() {
         Update u;
 
         u.id = libtb::random_integer_in_range(M - 1);
+        if (active_updates_.size() != 0) {
+            u.id = *libtb::choose_random(active_updates_.begin(),
+                                        active_updates_.end());
+        }
         u.op = random_op(u.id, u.k);
         u.s = libtb::random<SizeT>();
         return u;
@@ -176,7 +190,12 @@ struct MachineModel
         const int allow_error = (libtb::random_integer_in_range(100) < 10);
         while (rnds--) {
 
-            const int id = libtb::random_integer_in_range(M - 1);
+            int id;
+            while (true) {
+                id = libtb::random_integer_in_range(M - 1);
+                if (active_updates_.find(id) == active_updates_.end())
+                    break;
+            }
             const std::size_t sz = t_[id].size();
             if (sz != 0 || allow_error) {
                 const LevelT l = libtb::random_integer_in_range(N - 1);
@@ -415,6 +434,17 @@ struct SortedListsTb : libtb::TopLevel
 
         t_wait_posedge_clk(10);
         update_done_event_.notify();
+
+        for (int i = 0; i < OPT_UPDATES; i++)
+        {
+            if (i % 100 == 0) {
+                mdl_.update_actives();
+                t_wait_posedge_clk(10);
+            }
+
+            const Update u = mdl_.random_update();
+            b_issue_upt(u.id, u.op, u.k, u.s);
+        }
     }
 
     void upt_idle() {
