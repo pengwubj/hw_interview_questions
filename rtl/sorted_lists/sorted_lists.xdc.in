@@ -25,5 +25,6 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(sorted_lists)
-LIBPD_VIVADO(sorted_lists)
+create_clock -period 10.00 -name CLK -waveform {0.000 5.000} [get_ports clk]
+set_input_delay -clock CLK 1.0 [all_inputs]
+set_output_delay -clock CLK 1.0 [all_outputs]

@@ -25,5 +25,29 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-EMIT_ANSWER(sorted_lists)
-LIBPD_VIVADO(sorted_lists)
+
+set prj sorted_lists
+create_project latency -in_memory
+
+## Require a large device because of I/O count.
+set_property part XC7A200TFFG1156  [current_project]
+
+# Source
+read_verilog @CMAKE_CURRENT_SOURCE_DIR@/$prj.sv
+read_verilog @LIBV_ROOT@/popcnt.sv
+read_verilog @LIBV_ROOT@/delay_pipe.sv
+read_verilog @LIBV_ROOT@/ffs.sv
+read_verilog @LIBV_ROOT@/encoder.sv
+read_verilog @CMAKE_CURRENT_SOURCE_DIR@/sorting_network.sv
+read_verilog @LIBPD_TECH_ROOT@/dpsrams.sv
+
+# XDC
+read_xdc @CMAKE_CURRENT_BINARY_DIR@/$prj.xdc
+
+# PD FLOW
+synth_design -name $prj -top $prj -include_dirs {@LIBPD_INCLUDE_DIRS@}
+opt_design
+place_design
+phys_opt_design
+route_design
+report_timing_summary
