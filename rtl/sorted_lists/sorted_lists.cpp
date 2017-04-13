@@ -35,6 +35,8 @@
 //
 #include "Vsorted_lists.h"
 
+#define ISSUE_DELAY
+
 #define PORTS(__func)                           \
     __func(upt_vld, bool)                       \
     __func(upt_id, IdT)                         \
@@ -432,8 +434,9 @@ struct SortedListsTb : libtb::TopLevel
         t_wait_posedge_clk(1);
         mdl_.update(id, op, k, s);
         upt_idle();
-        // TODO: Remove after forwarding implemented
-//        t_wait_posedge_clk(10);
+#ifdef ISSUE_DELAY
+        t_wait_posedge_clk(1);
+#endif
     }
 
     void qry_idle() {

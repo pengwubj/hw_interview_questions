@@ -39,8 +39,9 @@ modified shall not be queried.
 Objective: List state can be updated "every-other-cycle"; therefore a
 utilization of around 50% is required. List state can be queried on each cycle.
 
-Actuals: List state can be updated on every cycle. List state can be queried on
-each cycle (performance objectives have been exceeded).
+Actuals: List state can be updated on every other cycle. List state
+can be queried on each cycle (performance objectives have been
+exceeded).
 
 # Implementation
 
@@ -74,5 +75,20 @@ application of UPDATE stimulus. Stimulus is appropriately constrained.
 
 Post-initialization, query commands are emitted and responses checked against
 expected behavior.
+
+# PD
+
+The target operating clock frequency of the block is 150-170 MHz. Two
+key optimizations
+
+* The update pipeline is not completely forwarded. Consequently, it
+  cannot support back to back update commands to the same ID. The
+  pipeline can support back-to-back commands to differing ID.
+
+* The sort network is pipelined after each comparison operation
+  (accounting for parallelism between operations). This is a fairly
+  lengthy comparison, 64b subtraction, and may therefore be
+  slow. There are no requirements on latency, therefore pipeline is
+  applied.
 
 # Commentary
