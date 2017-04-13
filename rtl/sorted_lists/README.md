@@ -15,15 +15,15 @@ simply retained by the machine and returned to the client.
 
 List state can be modified using the following commands:
 
-    * __CLEAR__ All State associated with the LIST is cleared (reset to initial
+    * CLEAR: All State associated with the LIST is cleared (reset to initial
       state).
 
-    * __ADD__ A {KEY, SIZE} pair is added to the LIST
+    * ADD: A {KEY, SIZE} pair is added to the LIST
 
-    * __DELETE__ A {KEY, SIZE} pair is deleted from the LIST based upon an input
+    * DELETE: A {KEY, SIZE} pair is deleted from the LIST based upon an input
     KEY operand.  If the KEY is not present, an error is signalled.
 
-    * __REPLACE__ The SIZE field of a {KEY, SIZE} pair is replaced beased upon
+    * REPLACE: The SIZE field of a {KEY, SIZE} pair is replaced beased upon
     an input KEY operand.
 
 A QUERY interface is present. From this a particular LIST is addressed and the
