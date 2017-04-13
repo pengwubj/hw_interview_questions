@@ -61,6 +61,17 @@ module sorting_network
     end
   endfunction // table_state_t
 
+  function table_state_t zero_invalid(input table_state_t x);
+    begin
+      table_state_t r  = x;
+      for (int i = 0; i < 4; i++)
+        if (!r.e[i].vld)
+          r.e[i].key = 0;
+      return r;
+    end
+  endfunction // zero_invalid
+
+
   //
   logic [2:0]                         valid_r;
   logic [2:0]                         valid_w;
@@ -81,27 +92,42 @@ module sorting_network
     begin : sort_PROC
 
       //
-      valid_w = {valid_r [1:0], unsorted_valid};
+      valid_w   = {valid_r [1:0], unsorted_valid};
+
+      // This is a unsorting network. For an unordered input, the sequence is
+      // sorted based upon decreasing value of key. Therefore, at the output of
+      // the module, the 0'th entry is the largest with entries thereafter
+      // decreasing.
+      //
+      // zero_invalid: This is a bit of a hack. For invalid inputs, the key is
+      // reset to zero (the smallest value by definition). This is to explicitly
+      // disallow large values of KEYS for invalid entries from being considered
+      // at the output. If, for some reason, this zero value is largest. The
+      // list is by definition empty, therefore this can be easily detected by
+      // considering the valid bits.
 
       // S0
       //
-      s0_w  = compare_and_swap(unsorted, 1, 3);
-      s0_w  = compare_and_swap(s0_w, 0, 2);
+      s0_w      = zero_invalid(unsorted);
+      s0_w      = compare_and_swap(s0_w, 1, 3);
+      s0_w      = compare_and_swap(s0_w, 0, 2);
 
       // S1
       //
-      s1_w  = compare_and_swap(s0_r, 2, 3);
-      s1_w  = compare_and_swap(s1_w, 0, 1);
+      s1_w      = s0_r;
+      s1_w      = compare_and_swap(s1_w, 2, 3);
+      s1_w      = compare_and_swap(s1_w, 0, 1);
 
       // S2
       //
-      s2_w  = compare_and_swap(s1_r, 1, 2);
+      s2_w      = s1_r;
+      s2_w      = compare_and_swap(s2_w, 1, 2);
 
       //
-      sorted_r = s2_r;
+      sorted_r  = s2_r;
 
     end // block: sort_PROC
-  
+
   // ======================================================================== //
   //                                                                          //
   // Sequential Logic                                                         //
@@ -122,9 +148,9 @@ module sorting_network
     begin
       if (valid_w [0])
         s0_r <= s0_w;
-      if (valid_r [1])
+      if (valid_w [1])
         s1_r <= s1_w;
-      if (valid_r [2])
+      if (valid_w [2])
         s2_r <= s2_w;
     end
 

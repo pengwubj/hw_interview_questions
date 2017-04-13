@@ -189,6 +189,13 @@ module sorted_lists
   n_d_t                                 ucode_qry_X_valid;
   logic [$clog2(N):0]                   ucode_qry_X_valid_popcnt;
   entry_t                               ucode_qry_X_entry;
+  //
+  table_state_t                         ucode_upt_2_t_fwd;
+  //
+  table_state_t                         upt_table_wrbk_r;
+  table_state_t                         upt_table_wrbk_w;
+  logic                                 upt_table_wrbk_vld_r;
+  logic                                 upt_table_wrbk_vld_w;
 
   // ======================================================================== //
   //                                                                          //
@@ -199,19 +206,27 @@ module sorted_lists
   // ------------------------------------------------------------------------ //
   //
   always_comb
-    begin
+    begin : update_exe_fwd_PROC
+
+      //
+      case ({     upt_pipe_vld_r [3]
+               & (ucode_upt_2_r.u.id == ucode_upt_3_r.u.id)
+            })
+        1'b1:    ucode_upt_2_t_fwd  = ucode_upt_3_r.t;
+        default: ucode_upt_2_t_fwd  = ucode_upt_2_r.t;
+      endcase
 
       //
       ucode_upt_3_t_vld = '0;
       for (int i = 0; i < N; i++)
-        ucode_upt_3_t_vld [i]  = ucode_upt_2_r.t.e[i].vld;
+        ucode_upt_3_t_vld [i]  = ucode_upt_2_t_fwd.e[i].vld;
 
       //
       ucode_upt_3_t_hit = '0;
       for (int i = 0; i < N; i++)
-        ucode_upt_3_t_hit [i] = ucode_upt_2_r.t.e[i].vld &&
-                   (ucode_upt_3_r.t.e[i].key == ucode_upt_2_r.u.key);
-    end
+        ucode_upt_3_t_hit [i] = ucode_upt_2_t_fwd.e[i].vld &&
+                   (ucode_upt_2_t_fwd.e[i].key == ucode_upt_2_r.u.key);
+    end // block: update_exe_fwd_PROC
 
   // ------------------------------------------------------------------------ //
   //
@@ -220,13 +235,16 @@ module sorted_lists
 
       //
       ucode_upt_3_w    = ucode_upt_2_r;
+      ucode_upt_3_w.t  = ucode_upt_2_t_fwd;
 
       //
       case (ucode_upt_2_r.u.op)
         OP_CLEAR: begin
           // CLEAR command. Invalidate all state associated with ID.
           //
-          ucode_upt_3_w.t = '0;
+          ucode_upt_3_w.t  = '0;
+          for (int i = 0; i < N; i++)
+            ucode_upt_3_w.t.e[i].key = '0;
         end
         OP_ADD: begin
           ucode_upt_3_w.error  = '0;
@@ -243,16 +261,15 @@ module sorted_lists
         end
         OP_DELETE: begin
           ucode_upt_3_w.error  = '0;
-
-          ucode_upt_3_w.error |= (ucode_upt_3_t_vld == '0);
           ucode_upt_3_w.error |= (ucode_upt_3_t_hit == '0);
 
-          if (!ucode_upt_3_w.error)
-            ucode_upt_3_w.t.e [hit_e].vld = '0;
+          if (!ucode_upt_3_w.error) begin
+            ucode_upt_3_w.t.e [hit_e].vld  = '0;
+            ucode_upt_3_w.t.e [hit_e].key  = '0;
+          end
         end
         OP_REPLACE: begin
           ucode_upt_3_w.error  = '0;
-          ucode_upt_3_w.error |= (ucode_upt_3_t_vld == '0);
           ucode_upt_3_w.error |= (ucode_upt_3_t_hit == '0);
 
           if (!ucode_upt_3_w.error)
@@ -268,27 +285,37 @@ module sorted_lists
     begin : update_pipe_PROC
 
       //
-      upt_pipe_vld_w   = { upt_pipe_vld_r [2:0], upt_vld };
+      upt_pipe_vld_w        = { upt_pipe_vld_r [2:0], upt_vld };
 
       //
-      ucode_upt_0_w    = '0;
-      ucode_upt_0_w.u.id = upt_id;
-      ucode_upt_0_w.u.op = op_t'(upt_op);
-      ucode_upt_0_w.u.key = upt_key;
-      ucode_upt_0_w.u.size = upt_size;
+      ucode_upt_0_w         = '0;
+      ucode_upt_0_w.u.id    = upt_id;
+      ucode_upt_0_w.u.op    = op_t'(upt_op);
+      ucode_upt_0_w.u.key   = upt_key;
+      ucode_upt_0_w.u.size  = upt_size;
 
       //
-      ucode_upt_1_w    = ucode_upt_0_r;
+      ucode_upt_1_w         = ucode_upt_0_r;
 
       //
-      ucode_upt_2_w    = ucode_upt_1_r;
-      ucode_upt_2_w.t  = upt_table_dout1;
+      ucode_upt_2_w         = ucode_upt_1_r;
+      casez ({      upt_pipe_vld_r [2]
+                 & (ucode_upt_1_r.u.id == ucode_upt_2_r.u.id)
+               ,    upt_pipe_vld_r [3]
+                 & (ucode_upt_1_r.u.id == ucode_upt_3_r.u.id)
+               , upt_table_wrbk_vld_r
+             })
+        3'b1??:  ucode_upt_2_w.t  = ucode_upt_3_w.t;
+        3'b01?:  ucode_upt_2_w.t  = ucode_upt_3_r.t;
+        3'b001:  ucode_upt_2_w.t  = upt_table_wrbk_r;
+        default: ucode_upt_2_w.t  = upt_table_dout1;
+      endcase // casez ({})
 
       //
-      ntf_vld_w   = '0;
-      ntf_id_w    = '0;
-      ntf_key_w   = '0;
-      ntf_size_w  = '0;
+      ntf_vld_w                 = '0;
+      ntf_id_w                  = '0;
+      ntf_key_w                 = '0;
+      ntf_size_w                = '0;
     end
 
   // ------------------------------------------------------------------------ //
@@ -331,7 +358,7 @@ module sorted_lists
       for (int i = 0; i < N; i++)
         ucode_qry_X_entry |= (qry_delay_pipe_out_r.level == level_t'(i))
           ? ucode_qry_X_sorted_r.e[i] : '0;
-      
+
       //
       qry_resp_vld_w       = qry_delay_pipe_out_r.vld;
       qry_key_w            = ucode_qry_X_entry.key;
@@ -346,33 +373,39 @@ module sorted_lists
   always_comb
     begin : qry_table_w_PROC
 
-      // RD port
-      //
-      upt_table_en1    = upt_pipe_vld_r [0];
-      upt_table_wen1   = '0;
-      upt_table_addr1  = ucode_upt_0_r.u.id;
-      upt_table_din1   = '0;
-
-      // WR port
-      //
-      upt_table_en2    = upt_pipe_vld_r [3];
-      upt_table_wen2   = '1;
-      upt_table_addr2  = ucode_upt_3_r.u.id;
-      upt_table_din2   = ucode_upt_3_r.t;
+      upt_table_wrbk_vld_w  =   upt_pipe_vld_r [0]
+                              & upt_pipe_vld_r [3]
+                              & (ucode_upt_0_r.u.id == ucode_upt_3_r.u.id)
+                            ;
+      upt_table_wrbk_w      = ucode_upt_3_r.t;
 
       // RD port
       //
-      qry_table_en1    = qry_pipe_vld_r [0];
-      qry_table_wen1   = '0;
-      qry_table_addr1  = ucode_qry_0_r.id;
-      qry_table_din1   = '0;
+      upt_table_en1         = upt_pipe_vld_r [0] & (~upt_table_wrbk_vld_w);
+      upt_table_wen1        = '0;
+      upt_table_addr1       = ucode_upt_0_r.u.id;
+      upt_table_din1        = '0;
 
       // WR port
       //
-      qry_table_en2    = upt_table_en2;
-      qry_table_wen2   = upt_table_wen2;
-      qry_table_addr2  = upt_table_addr2;
-      qry_table_din2   = upt_table_din2;
+      upt_table_en2         = upt_pipe_vld_r [3];
+      upt_table_wen2        = '1;
+      upt_table_addr2       = ucode_upt_3_r.u.id;
+      upt_table_din2        = ucode_upt_3_r.t;
+
+      // RD port
+      //
+      qry_table_en1         = qry_pipe_vld_r [0];
+      qry_table_wen1        = '0;
+      qry_table_addr1       = ucode_qry_0_r.id;
+      qry_table_din1        = '0;
+
+      // WR port
+      //
+      qry_table_en2         = upt_table_en2;
+      qry_table_wen2        = upt_table_wen2;
+      qry_table_addr2       = upt_table_addr2;
+      qry_table_din2        = upt_table_din2;
 
     end // block: qry_table_w_PROC
 
@@ -480,6 +513,20 @@ module sorted_lists
     if (upt_error_vld_w)
       upt_error_id_r <= upt_error_id_w;
 
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk)
+    if (rst)
+      upt_table_wrbk_vld_r <= '0;
+    else
+      upt_table_wrbk_vld_r <= upt_table_wrbk_vld_w;
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk)
+    if (upt_table_wrbk_vld_w)
+      upt_table_wrbk_r <= upt_table_wrbk_w;
+
   // ======================================================================== //
   //                                                                          //
   // Instances                                                                //
@@ -497,7 +544,7 @@ module sorted_lists
 
   // ------------------------------------------------------------------------ //
   //
-  delay_pipe #(.W($bits(qry_delay_pipe_t)), .N(4)) u_qry_delay_pipe (
+  delay_pipe #(.W($bits(qry_delay_pipe_t)), .N(3)) u_qry_delay_pipe (
     //
       .clk                    (clk                 )
     , .rst                    (rst                 )
@@ -505,7 +552,7 @@ module sorted_lists
     , .in                     (qry_delay_pipe_in   )
     , .out_r                  (qry_delay_pipe_out_r)
   );
-  
+
   // ------------------------------------------------------------------------ //
   //
   ffs #(.W(N), .OPT_FIND_FIRST_ZERO(1'b1)) u_ffs (
@@ -576,4 +623,4 @@ module sorted_lists
     , .dout2                  (qry_table_dout2    )
   );
 
-endmodule 
+endmodule
