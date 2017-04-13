@@ -39,10 +39,6 @@ modified shall not be queried.
 Objective: List state can be updated "every-other-cycle"; therefore a
 utilization of around 50% is required. List state can be queried on each cycle.
 
-Actuals: List state can be updated on every other cycle. List state
-can be queried on each cycle (performance objectives have been
-exceeded).
-
 # Implementation
 
 The question is purposefully misleading because it is worded in such a fashion
