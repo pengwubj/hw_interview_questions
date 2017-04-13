@@ -174,6 +174,9 @@ struct MachineModel
         Update u;
 
         u.id = libtb::random_integer_in_range(M - 1);
+
+        // If the ACTIVE UPDATE set is non-empty, ensure that ID is a random
+        // entry in the SET. We cannot touch ID outside of this range.
         if (active_updates_.size() != 0) {
             u.id = *libtb::choose_random(active_updates_.begin(),
                                         active_updates_.end());
@@ -191,6 +194,9 @@ struct MachineModel
         while (rnds--) {
 
             int id;
+
+            // Specifically choose an ID outside of the ACTIVE UPDATE set.
+            //
             while (true) {
                 id = libtb::random_integer_in_range(M - 1);
                 if (active_updates_.find(id) == active_updates_.end())
@@ -439,6 +445,11 @@ struct SortedListsTb : libtb::TopLevel
         {
             if (i % 100 == 0) {
                 mdl_.update_actives();
+
+                // Additional delay to allow for inflight QUERY commands to
+                // complete before any attempt to (potentially) modify their
+                // state.
+                //
                 t_wait_posedge_clk(10);
             }
 
