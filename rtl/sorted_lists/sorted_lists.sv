@@ -28,7 +28,17 @@
 `include "sorted_lists_pkg.vh"
 `include "dpsram_pkg.vh"
 
-`define ISSUE_DELAY 1
+// DISABLE_FORWARDING flag enables/disables forwarding between stages 2/1 in the
+// update pipeline. Updates to list state is performed in S2 and therefore
+// arrives late in the cycle. The additional logic to MUX this at stage 1
+// represents a critical path in the design.
+//
+// When DISABLE_FORWARDING is defined, the pipeline does not support
+// back-to-back update commands to the same ID. Dependency/Stall logic is not
+// present in the pipeline to detect this case, therefore state corrupt will
+// occur.
+//
+`define DISABLE_FORWARDING 1
 
 module sorted_lists
 (
@@ -85,6 +95,7 @@ module sorted_lists
 );
   import sorted_lists_pkg::*;
 
+  // Enumeration denoting permissible Update Opcodes.
   //
   typedef enum logic [1:0]  { OP_CLEAR    = 2'b00,
                               OP_ADD      = 2'b01,
@@ -98,6 +109,7 @@ module sorted_lists
   typedef logic [7:0] listsize_t;
   typedef logic [7:0] level_t;
 
+  // Structure denoting an Update command
   //
   typedef struct packed {
     id_t id;
@@ -106,6 +118,7 @@ module sorted_lists
     size_t size;
   } upt_t;
 
+  // Update pipeline micro-code.
   //
   typedef struct packed {
     upt_t u;
@@ -113,6 +126,7 @@ module sorted_lists
     logic        error;
   } ucode_upt_t;
 
+  // Query pipeline micro-code.
   //
   typedef struct packed {
     id_t id;
@@ -233,7 +247,12 @@ module sorted_lists
                    (ucode_upt_2_t_fwd.e[i].key == ucode_upt_2_r.u.key);
     end // block: update_exe_fwd_PROC
 
+
   // ------------------------------------------------------------------------ //
+  // Stage 2 of the Update pipeline.
+  //
+  // Update command execution takes place at this point and the new list state
+  // constructed (to be written back in Stage 3).
   //
   always_comb
     begin : update_exe_PROC
@@ -244,13 +263,20 @@ module sorted_lists
 
       //
       case (ucode_upt_2_r.u.op)
+
+        // CLEAR command: invalidate all state associated with the currently
+        // addressed List.
+        //
         OP_CLEAR: begin
-          // CLEAR command. Invalidate all state associated with ID.
-          //
           ucode_upt_3_w.t  = '0;
           for (int i = 0; i < N; i++)
             ucode_upt_3_w.t.e[i].key = '0;
         end
+
+        // ADD command: append a new {KEY, SIZE} pair to the List state. If the
+        // List is full, no modification is made to state, the operation is
+        // killed and and error raised.
+        //
         OP_ADD: begin
           ucode_upt_3_w.error  = '0;
           ucode_upt_3_w.error |= (ucode_upt_2_t_vld == '1);
@@ -263,7 +289,13 @@ module sorted_lists
             e.size                             = ucode_upt_2_r.u.size;
             ucode_upt_3_w.t.e [vld_not_set_e]  = e;
           end
-        end
+        end // case: OP_ADD
+
+        // DELETE command: a given {KEY, SIZE} pair is invalidated based upon a
+        // match to the commands KEY operand. If the KEY is not present in the
+        // List, the command is killed and an error signalled. On error, no
+        // modification is made to List state.
+        //
         OP_DELETE: begin
           ucode_upt_3_w.error  = '0;
           ucode_upt_3_w.error |= (ucode_upt_2_t_hit == '0);
@@ -273,6 +305,12 @@ module sorted_lists
             ucode_upt_3_w.t.e [hit_e].key  = '0;
           end
         end
+
+        // REPLACE command: An existing {KEY, SIZE} pair is modified such that
+        // its KEY is replaced with the operand. If the KEY is not present in
+        // the List, the command is killed and an error raised. On error, no
+        // modification is made to List state.
+        //
         OP_REPLACE: begin
           ucode_upt_3_w.error  = '0;
           ucode_upt_3_w.error |= (ucode_upt_2_t_hit == '0);
@@ -282,7 +320,8 @@ module sorted_lists
         end
       endcase
 
-    end
+    end // block: update_exe_PROC
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -295,18 +334,26 @@ module sorted_lists
         ucode_upt_3_t_vld [i]  = ucode_upt_3_r.t.e[i].vld;
 
     end // block: ucode_upt_3_PROC
-  
+
+
   // ------------------------------------------------------------------------ //
+  // Notification
+  //
+  // Notifications are emitted to some external agent based when the occupancy
+  // of the currently addressed List falls to zero entries. This occurs on one
+  // of two occasions:
+  //
+  //   1) The LIST is cleared
+  //
+  //   2) An entry in the list is deleted and it is the only entry in the
+  //      list.
+  //
+  // Notifications are not raised iff the current command has been killed
+  // because of an upstream error.
   //
   always_comb
     begin : ntf_PROC
 
-      // Notify client when a LIST becomes empty. This occurs when:
-      //
-      //   1) The LIST is cleared
-      //
-      //   2) An entry in the list is deleted and it is the only entry in the
-      //      list
       //
       ntf_vld_w   =    upt_pipe_vld_r [3]
                     & (    (ucode_upt_3_r.u.op == OP_CLEAR)
@@ -319,9 +366,16 @@ module sorted_lists
       ntf_id_w    = ucode_upt_3_r.u.id;
       ntf_key_w   = ucode_upt_3_r.t.e [ucode_upt_3_hit_e_r].key;
       ntf_size_w  = ucode_upt_3_r.t.e [ucode_upt_3_hit_e_r].size;
-    end
+
+    end // block: ntf_PROC
+
 
   // ------------------------------------------------------------------------ //
+  // Update Pipeline
+  //
+  // Ancillary and control logic for the update pipeline. Forwarding is present
+  // at Stage 1 although this can be additionally qualified based upon the
+  // DISABLE_FORWARDING parameter.
   //
   always_comb
     begin : update_pipe_PROC
@@ -341,10 +395,10 @@ module sorted_lists
 
       //
       ucode_upt_2_w         = ucode_upt_1_r;
-      casez ({  
-`ifdef ISSUE_DELAY
+      casez ({
+`ifdef DISABLE_FORWARDING
                     1'b0
-`else                
+`else
                     upt_pipe_vld_r [2]
                  & (ucode_upt_1_r.u.id == ucode_upt_2_r.u.id)
 `endif
@@ -352,7 +406,7 @@ module sorted_lists
                  & (ucode_upt_1_r.u.id == ucode_upt_3_r.u.id)
                , upt_table_wrbk_vld_r
              })
-`ifndef ISSUE_DELAY
+`ifndef DISABLE_FORWARDING
         3'b1??:  ucode_upt_2_w.t  = ucode_upt_3_w.t;
 `endif
         3'b01?:  ucode_upt_2_w.t  = ucode_upt_3_r.t;
@@ -360,6 +414,7 @@ module sorted_lists
         default: ucode_upt_2_w.t  = upt_table_dout1;
       endcase // casez ({})
     end
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -372,7 +427,13 @@ module sorted_lists
 
     end
 
+
   // ------------------------------------------------------------------------ //
+  // Query Pipeline
+  //
+  // Ancillary and control logic for the Query pipeline. The Query pipeline is
+  // extended using a standard delay pipe structure to account for additional
+  // latency through the sorting network.
   //
   always_comb
     begin : qry_pipe_PROC
@@ -397,6 +458,19 @@ module sorted_lists
                                ucode_qry_2_r.id,
                                ucode_qry_2_r.level};
 
+    end // block: qry_pipe_PROC
+
+
+  // ------------------------------------------------------------------------ //
+  // Query Result Selection Mux.
+  //
+  // The post-sort selection operation is carried out. Associated state with
+  // that Entry is passed to the Query Response interface.
+  //
+  always_comb
+    begin
+
+      //
       ucode_qry_X_entry    = '0;
       for (int i = 0; i < N; i++)
         ucode_qry_X_entry |= (qry_delay_pipe_out_r.level == level_t'(i))
@@ -411,7 +485,15 @@ module sorted_lists
 
     end // block: qry_pipe_PROC
 
+
   // ------------------------------------------------------------------------ //
+  // State Table (SRAM) Access Logic
+  //
+  // The Query and Update tables are implemented. Both tables are read by their
+  // respective pipeline. The table is written by the Update pipeline. The Query
+  // pipeline never writes to table state.
+  //
+  // Ports are fixed function and are dedicated to either read or write.
   //
   always_comb
     begin : qry_table_w_PROC
@@ -452,6 +534,7 @@ module sorted_lists
 
     end // block: qry_table_w_PROC
 
+
   // ======================================================================== //
   //                                                                          //
   // Sequential Logic                                                         //
@@ -465,6 +548,7 @@ module sorted_lists
       upt_pipe_vld_r <= 'b0;
     else
       upt_pipe_vld_r <= upt_pipe_vld_w;
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -483,6 +567,7 @@ module sorted_lists
       ucode_upt_3_r <= ucode_upt_3_w;
 
   end // block: ucode_upt_reg_PROC
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -507,6 +592,7 @@ module sorted_lists
 
   end // block: ucode_qry_reg_PROC
 
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
@@ -514,6 +600,7 @@ module sorted_lists
       qry_resp_vld_r <= 'b0;
     else
       qry_resp_vld_r <= qry_resp_vld_w;
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -525,6 +612,7 @@ module sorted_lists
       qry_listsize_r <= qry_listsize_w;
     end
 
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
@@ -532,6 +620,7 @@ module sorted_lists
       ntf_vld_r <= 'b0;
     else
       ntf_vld_r <= ntf_vld_w;
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -542,6 +631,7 @@ module sorted_lists
       ntf_size_r <= ntf_size_w;
     end
 
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
@@ -550,11 +640,13 @@ module sorted_lists
     else
       upt_error_vld_r <= upt_error_vld_w;
 
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
     if (upt_error_vld_w)
       upt_error_id_r <= upt_error_id_w;
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -570,11 +662,13 @@ module sorted_lists
     if (upt_table_wrbk_vld_w)
       upt_table_wrbk_r <= upt_table_wrbk_w;
 
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
     ucode_upt_3_hit_e_r <= hit_e;
-  
+
+
   // ======================================================================== //
   //                                                                          //
   // Instances                                                                //
@@ -590,6 +684,7 @@ module sorted_lists
     , .y                      (ucode_upt_3_t_popcnt    )
   );
 
+
   // ------------------------------------------------------------------------ //
   //
   popcnt #(.W(N)) u_popcnt (
@@ -598,6 +693,7 @@ module sorted_lists
     //
     , .y                      (ucode_qry_X_valid_popcnt)
   );
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -610,6 +706,7 @@ module sorted_lists
     , .out_r                  (qry_delay_pipe_out_r)
   );
 
+
   // ------------------------------------------------------------------------ //
   //
   ffs #(.W(N), .OPT_FIND_FIRST_ZERO(1'b1)) u_ffs (
@@ -620,6 +717,7 @@ module sorted_lists
     , .n                      (vld_not_set_e      )
   );
 
+
   // ------------------------------------------------------------------------ //
   //
   encoder #(.W(N)) u_encoder (
@@ -628,6 +726,7 @@ module sorted_lists
     //
     , .n                      (hit_e               )
   );
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -641,6 +740,7 @@ module sorted_lists
     //
     , .sorted_r               (ucode_qry_X_sorted_r)
   );
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -660,6 +760,7 @@ module sorted_lists
     , .din2                   (upt_table_din2     )
     , .dout2                  (upt_table_dout2    )
   );
+
 
   // ------------------------------------------------------------------------ //
   //
