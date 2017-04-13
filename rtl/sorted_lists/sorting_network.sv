@@ -94,10 +94,10 @@ module sorting_network
       //
       valid_w   = {valid_r [1:0], unsorted_valid};
 
-      // This is a unsorting network. For an unordered input, the sequence is
-      // sorted based upon decreasing value of key. Therefore, at the output of
-      // the module, the 0'th entry is the largest with entries thereafter
-      // decreasing.
+      // This is a combinatorial sorting network. For an unordered input, the
+      // sequence is sorted based upon decreasing value of key. Therefore, at
+      // the output of the module, the 0'th entry is the largest with entries
+      // thereafter decreasing.
       //
       // zero_invalid: This is a bit of a hack. For invalid inputs, the key is
       // reset to zero (the smallest value by definition). This is to explicitly
