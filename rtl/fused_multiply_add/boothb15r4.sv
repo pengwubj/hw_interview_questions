@@ -26,7 +26,7 @@
 //========================================================================== //
 
 module boothb15r4 (input [15:0] a,
-                   input [15:0]        b,
+                   input [15:0] b,
                    output logic [31:0] y_1,
                    output logic [31:0] y_2);
 
@@ -37,7 +37,7 @@ module boothb15r4 (input [15:0] a,
     begin
       a_w = w_t'(a);
       b_w = w_t'(b);
-    end 
+    end
 
   function logic [1:0] compress_3_to_2 (input [2:0] x);
     begin
@@ -66,7 +66,7 @@ module boothb15r4 (input [15:0] a,
 
   w_t a_plus_1;
   always_comb a_plus_1 = inc_by_1(a_w);
-    
+
   function w_t booth_recode_radix_4 (input [2:0] c);
     begin
       w_t r = '0;
@@ -89,7 +89,7 @@ module boothb15r4 (input [15:0] a,
   endfunction // rsh
 
   w_t acc [8];
-  
+
   always_comb
     begin : booth_PROC
       acc [0] = rsh(booth_recode_radix_4 ({b [1:0], 1'b0}), 0);
@@ -119,6 +119,5 @@ module boothb15r4 (input [15:0] a,
       y_1 = csa [10];
       y_2 = csa [11];
     end // block: y_PROC
-  
+
 endmodule // boothb15r4
-  
