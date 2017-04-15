@@ -25,9 +25,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-module pipelined_add_constant #(parameter int W = 32,
-                                parameter int C = 2,
-                                parameter int INIT = 0)
+module pipelined_add_constant #(parameter int W = 32)
 (
    //======================================================================== //
    //                                                                         //
@@ -49,49 +47,27 @@ module pipelined_add_constant #(parameter int W = 32,
 
   typedef logic [W-1:0] w_t;
 
-  //
-  w_t                              A_0_w;
-  w_t                              A_0_r;
-  //
-  w_t                              A_0_delayed_r;
-  //
-  logic                            UNUSED_co_0;
-  //
-  logic                            sel_r;
-  logic                            sel_w;
+  localparam w_t INIT = '0;
+  localparam w_t INCR = 'd2;
+  
+
+  // A
+  w_t                        A_y_w;
+  w_t                        A_y_r;
+
+  // B
+  w_t                        B_y_r;
 
   //
-  w_t                              c2__c;
+  logic                      valid_r;
+
   //
-  w_t                              c2__x_r;
-  w_t                              c2__x_w;
-  logic                            c2__x_en;
-  //
-  w_t                              c2__y_r;
+  logic                      init_r;
 
   // ------------------------------------------------------------------------ //
   //
   always_comb
-    begin
-
-      //
-      {UNUSED_co_0, A_0_w}  = A_0_r + w_t'(C);
-
-      //
-      sel_w                 = ~sel_r;
-
-      //
-      c2__c                 = sel_r ? w_t'(C) : w_t'(C << 1);
-
-      //
-      c2__x_w               = sel_r ? c2__x_r : c2__y_r;
-      c2__x_en              = ~sel_r;
-
-
-      fail                  = '0;
-
-    end
-
+    fail = (A_y_r != B_y_r);
 
   // ======================================================================== //
   //                                                                          //
@@ -103,39 +79,37 @@ module pipelined_add_constant #(parameter int W = 32,
   //
   always_ff @(posedge clk)
     if (rst)
-      sel_r <= 'b1;
+      valid_r <= '0;
     else
-      sel_r <= sel_w;
-
+      valid_r <= '1;
+    
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
     if (rst)
-      A_0_r <= '0;
+      A_y_r <= '0;
     else
-      A_0_r <= A_0_w;
-
-  // ------------------------------------------------------------------------ //
-  //
-  always_ff @(posedge clk)
-    A_0_delayed_r <= A_0_r;
-
+      A_y_r <= A_y_w;
+  
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
     if (rst)
-      c2__x_r <= '0;
-    else if (c2__x_en)
-      c2__x_r <= c2__x_w;
+      init_r <= '1;
+    else
+      init_r <= '0;
+
+  // ======================================================================== //
+  //                                                                          //
+  // Instances                                                                //
+  //                                                                          //
+  // ======================================================================== //
 
   // ------------------------------------------------------------------------ //
   //
-  two_cycle_adder #(.W(W)) u_two_cycle_adder (.clk(clk),
-                                              .cin(1'b0),
-                                              .a(c2__x_r),
-                                              .b(c2__c),
-                                              .cout(),
-                                              .y(c2__y_r)
-                                              );
+  A #(.W(W)) u_A (.clk(clk), .rst(rst), .a_init(INIT), .i(INCR), .init(init_r), .y_w(A_y_w));
+  B #(.W(W)) u_B (.clk(clk), .rst(rst), .a_init(INIT), .i(INCR), .init(init_r), .y_r(B_y_r));
 
 endmodule
+
+
