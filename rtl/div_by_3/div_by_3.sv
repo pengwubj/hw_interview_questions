@@ -70,7 +70,7 @@ module div_by_3 (
     logic [15:0] i;
     logic [14:0] f;
   } Q16_15_t;
-  
+
   localparam Q1_15_t M1_33333 = 16'b0010_1010_1010_1011;
 
   //
@@ -94,7 +94,7 @@ module div_by_3 (
     begin : cntrl_PROC
 
       Q16_15_t x_ext = Q16_15_t'(x);
-      
+
       //
       case (state_r)
         'd0:     accumulator_inc = Q16_15_t'(x_ext <<  0);
@@ -137,10 +137,10 @@ module div_by_3 (
       endcase // case (valid_r)
 
       //
-      y_r = accumulator_r.i;
+      y_r          = accumulator_r.i;
 
     end // block: cntrl_PROC
-  
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
@@ -148,7 +148,7 @@ module div_by_3 (
       valid_r <= '0;
     else
       valid_r <= valid_w;
-  
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)
@@ -156,7 +156,7 @@ module div_by_3 (
       accumulator_r <= '0;
     else if (accumulator_en)
       accumulator_r <= accumulator_w;
-  
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)

@@ -38,6 +38,10 @@
 
 struct DivBy3Tb : libtb::TopLevel
 {
+  struct Result {
+      uint32_t d, result;
+  };
+
   using UUT = Vdiv_by_3;
   SC_HAS_PROCESS(DivBy3Tb);
   DivBy3Tb(sc_core::sc_module_name mn = "t")
@@ -62,12 +66,21 @@ struct DivBy3Tb : libtb::TopLevel
   {
     t_wait_reset_done();
     LIBTB_REPORT_INFO("Stimulus starts...");
-    t_wait_posedge_clk(1);
-    pass_ = true;
-    x_ = 3;
-    t_wait_posedge_clk(1);
-    pass_ = false;
-    t_wait_posedge_clk(20);
+    int n = 10000;
+    while (n--) {
+        const uint32_t x = libtb::random_integer_in_range((1 << 15) - 1);
+        pass_ = true;
+        x_ = x;
+        t_wait_posedge_clk(1);
+        pass_ = false;
+        expected_.push_back(Result{x, x / 3});
+
+        // On each round, simply wait until the computation is complete to avoid
+        // exposing the TB to any flow-control.
+        //
+        t_wait_posedge_clk(10);
+    }
+    t_wait_posedge_clk(10);
     LIBTB_REPORT_INFO("Stimulus ends..");
     return false;
   }
@@ -83,21 +96,22 @@ struct DivBy3Tb : libtb::TopLevel
       }
 
       const uint32_t actual = y_r_;
-      const uint32_t expected = expected_.front(); expected_.pop_front();
-      if (actual != expected) {
+      const Result expected = expected_.front(); expected_.pop_front();
+      if (actual != expected.result) {
         std::stringstream ss;
         ss << "Mismatch detected: "
+           << " Oprand: " << expected.d
            << " Actual: " << actual
-           << " Expected: " << expected;
+           << " Expected: " << expected.result;
         LIBTB_REPORT_ERROR(ss.str());
       } else {
         std::stringstream ss;
-        ss << "Validated cnt=" << actual;
+        ss << "Validated oprand=" << expected.d << " " << actual;
         LIBTB_REPORT_DEBUG(ss.str());
       }
     }
   }
-  std::deque<uint32_t> expected_;
+  std::deque<Result> expected_;
 #define __declare_signal(__name, __type)        \
   sc_core::sc_signal<__type> __name##_;
   PORTS(__declare_signal)
