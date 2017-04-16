@@ -68,9 +68,16 @@ module fused_multiply_add
    , output logic [31:0]                     y_w
 );
 
-  // (15b * 15b) + 15b = 32b
+  // Result definition.
+  //
+  //   Y  += (M   x   X) + C
+  //
+  //  32b += (15b x 15b) + 15b
+  //
   typedef logic [31:0] w_t;
 
+  // Standard CSA compressor, swap out with STDCELL is applicable.
+  //
   function logic [1:0] compress_3_to_2 (input [2:0] x);
     begin
       logic [1:0] r;
@@ -91,10 +98,6 @@ module fused_multiply_add
       return {w_t'(a << 1), b};
     end
   endfunction // compress_3_to_2_W
-
-  function w_t inc_by_1 (w_t t);
-    return t + 'b1;
-  endfunction // inc_by_1
 
   // ======================================================================== //
   //                                                                          //
@@ -144,15 +147,19 @@ module fused_multiply_add
     begin
       w_t r = '0;
       case (bth)
-        3'b000: r = 'b0;
+        3'b000: r = '0;
         3'b001: r = x_w;
         3'b010: r = x_w;
-        3'b011: r = x_w << 1;
-        3'b100: r = x_neg_w << 1;
+        3'b011: r = (x_w << 1);
+        3'b100: r = (x_neg_w << 1);
         3'b101: r = x_neg_w;
         3'b110: r = x_neg_w;
-        3'b111: r = 'b0;
+        3'b111: r = '0;
       endcase // case (c)
+
+      // Shift is performed as an Elaboration-time constant, therefore no
+      // overhead is present in RTL.
+      //
       return (r << rshift);
     end
   endfunction // booth_recode_radix_4
@@ -162,6 +169,7 @@ module fused_multiply_add
   always_comb
     begin : booth_PROC
 
+      // Booth recoding network.
       //
       acc [0]         = booth_recode_radix_4 ({m [1:0], 1'b0}, 0);
       acc [1]         = booth_recode_radix_4 (m [3:1], 2);
@@ -182,6 +190,7 @@ module fused_multiply_add
       //
       w_t c_w               = w_t'(c);
 
+      // Booth CSA network
       //
       {csa [0], csa [1]}    = compress_3_to_2_W(acc [2], acc [1], acc [0]);
       {csa [2], csa [3]}    = compress_3_to_2_W(acc [5], acc [4], acc [3]);
@@ -189,9 +198,18 @@ module fused_multiply_add
       {csa [6], csa [7]}    = compress_3_to_2_W(csa [3], csa [2], csa [1]);
       {csa [8], csa [9]}    = compress_3_to_2_W(csa [6], csa [5], csa [4]);
       {csa [10], csa [11]}  = compress_3_to_2_W(csa [9], csa [8], csa [7]);
+
+      // Injection of increment (+C) (1)
+      //
       {csa [12], csa [13]}  = compress_3_to_2_W(csa [11], csa [10], c_w);
+
+      // Injection of accumulated results. (2)
+      //
       {csa [14], csa [15]}  = compress_3_to_2_W(csa_0_r, csa_1_r, csa [12]);
       {csa [16], csa [17]}  = compress_3_to_2_W(csa [13], csa [14], csa [15]);
+
+      // TODO place (1 and 2) at the top of the CSA as these are early
+      // signals.
 
     end // block: csa_PROC
 
