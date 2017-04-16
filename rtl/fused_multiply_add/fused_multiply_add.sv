@@ -117,7 +117,7 @@ module fused_multiply_add
   logic                       y_valid_w;
   //
   w_t                         x_w;
-  w_t                         x_p1_w;
+  w_t                         x_neg_w;
 
   // ======================================================================== //
   //                                                                          //
@@ -134,7 +134,7 @@ module fused_multiply_add
       x_w     = w_t'(x);
 
       //
-      x_p1_w  = w_t'(x) + 'b1;
+      x_neg_w  = '0 - w_t'(x);
 
     end
 
@@ -148,9 +148,9 @@ module fused_multiply_add
         3'b001: r = x_w;
         3'b010: r = x_w;
         3'b011: r = x_w << 1;
-        3'b100: r = x_p1_w << 1;
-        3'b101: r = x_p1_w;
-        3'b110: r = x_p1_w;
+        3'b100: r = x_neg_w << 1;
+        3'b101: r = x_neg_w;
+        3'b110: r = x_neg_w;
         3'b111: r = 'b0;
       endcase // case (c)
       return (r << rshift);

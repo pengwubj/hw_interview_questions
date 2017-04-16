@@ -71,33 +71,52 @@ struct FMATb : libtb::TopLevel
     PORTS(__bind_signal)
 #undef __bind_signals
   }
+
+  void run_round()
+  {
+    Machine mach;
+
+    const uint32_t init = libtb::random_integer_in_range(100);
+    cntrl_load_ = true;
+    cntrl_init_ = init;
+    t_wait_posedge_clk(1);
+    {
+      std::stringstream ss;
+      ss << "Initial state=" << init;
+      LIBTB_REPORT_DEBUG(ss.str());
+    }
+    mach.init(init);
+    cntrl_load_ = false;
+    for (int i = 0; i < 16; i++) {
+      const uint32_t m = libtb::random_integer_in_range(100);
+      const uint32_t x = libtb::random_integer_in_range(100);
+      const uint32_t c = libtb::random_integer_in_range(100);
+
+      pass_ = true;
+      m_ = m;
+      x_ = x;
+      c_ = c;
+      std::stringstream ss;
+      ss << "Y += MX + C ; ("
+         << "M=" << m_ << ","
+         << "X=" << x_ << ","
+         << "C=" << c_
+         << ")";
+      LIBTB_REPORT_DEBUG(ss.str());
+      t_wait_posedge_clk();
+      mach.apply(m, x, c);
+      expected_.push_back(mach.y_);
+    }
+    pass_ = false;
+    t_wait_posedge_clk(10);
+  }
+
   bool run_test()
   {
     t_wait_reset_done();
     LIBTB_REPORT_INFO("Stimulus starts...");
-    Machine mach;
-
-    const uint32_t init = libtb::random<uint32_t>();
-    cntrl_load_ = true;
-    cntrl_init_ = init;
-    t_wait_posedge_clk(1);
-    mach.init(init);
-    cntrl_load_ = false;
-    for (int i = 0; i < 20; i++) {
-        const uint32_t m = libtb::random_integer_in_range(100);
-        const uint32_t x = libtb::random_integer_in_range(100);
-        const uint32_t c = libtb::random_integer_in_range(100);
-
-        pass_ = true;
-        m_ = m;
-        x_ = x;
-        c_ = c;
-        t_wait_posedge_clk();
-        mach.apply(m, x, c);
-        expected_.push_back(mach.y_);
-    }
-    pass_ = false;
-    t_wait_posedge_clk(10);
+    for (int i = 0; i < 10000; i++)
+      run_round();
     LIBTB_REPORT_INFO("Stimulus ends..");
     return false;
   }
